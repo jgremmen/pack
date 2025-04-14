@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.sayayi.lib.pack;
+package de.sayayi.lib.pack.detector;
 
+import de.sayayi.lib.pack.PackConfig;
+import de.sayayi.lib.pack.PackInputStream;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 

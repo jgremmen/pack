@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.sayayi.lib.pack;
+package de.sayayi.lib.pack.detector;
 
+import de.sayayi.lib.pack.PackConfig;
+import de.sayayi.lib.pack.PackInputStream;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
@@ -53,10 +55,8 @@ public abstract class AbstractTikaDetector implements Detector
   {
     if (input != null)
     {
-      input.mark(
-          packConfig.getMagic().length +
-          (packConfig.getVersionBits() + 7) / 8 +
-          (packConfig.isCompressionSupport() ? 256 : 0));
+      // worst case: magic.length + (1bit (compression) + versionBits + 7) / 8 + 10 bytes (zip header)
+      input.mark(packConfig.getMagic().length + 11 + packConfig.getVersionBits() / 8);
 
       try(var packStream = new PackInputStream(packConfig, input)) {
         return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
@@ -73,7 +73,7 @@ public abstract class AbstractTikaDetector implements Detector
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   protected @NotNull MediaType buildAnnotatedMimeType(@NotNull OptionalInt version, Boolean compressed)
   {
-    var parameters = new HashMap<String,String>();
+    final var parameters = new HashMap<String,String>();
 
     if (version.isPresent())
       parameters.put("version", Integer.toString(version.getAsInt()));
