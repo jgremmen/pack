@@ -16,12 +16,14 @@
 package de.sayayi.lib.pack;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Range;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.GZIPOutputStream;
 
+import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.bitCount;
 
 
@@ -29,15 +31,15 @@ import static java.lang.Integer.bitCount;
  * @author Jeroen Gremmen
  * @since 0.1.0
  */
-public final class PackOutputStream implements Closeable
+public class PackOutputStream implements Closeable
 {
   private @NotNull OutputStream stream;
   private int bit = 7;
   private byte b;
 
 
-  public PackOutputStream(@NotNull PackConfig packConfig, int version, boolean compress,
-                          @NotNull OutputStream stream) throws IOException
+  public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
+                          boolean compress, @NotNull OutputStream stream) throws IOException
   {
     this.stream = stream;
 
@@ -60,10 +62,11 @@ public final class PackOutputStream implements Closeable
         writeLarge(version, versionBits);
     }
 
-    if (packConfig.isCompressionSupport() && compress)
+    if (compress && packConfig.isCompressionSupport())
     {
       forceByteAlignment();
       stream.flush();
+
       this.stream = new GZIPOutputStream(stream);
     }
   }
@@ -83,10 +86,15 @@ public final class PackOutputStream implements Closeable
   }
 
 
-  public <T extends Enum<T>> void writeEnum(@NotNull T value, int bitWidth) throws IOException
+  public <T extends Enum<T>> void writeEnum(@NotNull T value, @Range(from = 1, to = 16) int bitWidth) throws IOException
   {
+    //noinspection ConstantValue
     if (bitWidth <= 0 || bitWidth > 16)
       throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
+
+    var ordinal = value.ordinal();
+    if (ordinal >= (1 << bitWidth))
+      throw new IllegalArgumentException("Ordinal of enum '" + value.name() + "' exceeds bitWidth");
 
     if (bitWidth <= 8)
       writeSmall(value.ordinal(), bitWidth);
@@ -97,13 +105,9 @@ public final class PackOutputStream implements Closeable
 
   public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException
   {
-    int n = value.getClass().getEnumConstants().length;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
+    var n = value.getClass().getEnumConstants().length;
 
-    writeEnum(value, bitCount(n));
+    writeEnum(value, bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
   }
 
 
@@ -112,8 +116,13 @@ public final class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public void writeUnsignedShort(int value) throws IOException {
+  public void writeUnsignedShort(@Range(from = 0, to = 65535) int value) throws IOException {
     writeLarge(value, 16);
+  }
+
+
+  public void writeInt(int value) throws IOException {
+    writeLarge(value, 32);
   }
 
 
@@ -192,7 +201,7 @@ public final class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public void writeSmallVar(int value) throws IOException
+  public void writeSmallVar(@Range(from = 0, to = 255) int value) throws IOException
   {
     if (value <= 7)
       writeSmall(value, 4);  // 0vvv
@@ -209,7 +218,8 @@ public final class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public void writeSmall(int value, int bitWidth) throws IOException
+  public void writeSmall(@Range(from = 0, to = 255) int value,
+                         @Range(from = 1, to = 8) int bitWidth) throws IOException
   {
     if (value >= (1 << bitWidth))
       throw new IllegalArgumentException("value " + value + " occupies more than " + bitWidth + " bits");
@@ -242,7 +252,7 @@ public final class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public void writeLarge(long value, int bitWidth) throws IOException
+  public void writeLarge(long value, @Range(from = 9, to = 64) int bitWidth) throws IOException
   {
     if (bit < 7)
     {
@@ -267,7 +277,7 @@ public final class PackOutputStream implements Closeable
   }
 
 
-  private void forceByteAlignment() throws IOException
+  protected void forceByteAlignment() throws IOException
   {
     if (bit != 7)
     {
@@ -282,6 +292,7 @@ public final class PackOutputStream implements Closeable
   public void close() throws IOException
   {
     forceByteAlignment();
+    stream.flush();
     stream.close();
   }
 }

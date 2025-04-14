@@ -17,6 +17,7 @@ package de.sayayi.lib.pack;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Range;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -65,7 +66,7 @@ public class PackConfig
 
 
   @Contract(pure = true)
-  public int getVersionBits() {
+  public @Range(from = 0, to = 31) int getVersionBits() {
     return versionBits;
   }
 
@@ -120,7 +121,7 @@ public class PackConfig
       if (lowestVersion < 0)
         throw new IllegalArgumentException("lowestVersion must not be negative");
       if (lowestVersion > highestVersion)
-        throw new IllegalArgumentException("lowestVersion may not be larger than highestVersion");
+        throw new IllegalArgumentException("lowestVersion must not be larger than highestVersion");
 
       lowestVersionNumber = lowestVersion;
 

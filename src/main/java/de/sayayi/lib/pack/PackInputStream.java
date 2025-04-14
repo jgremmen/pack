@@ -17,12 +17,14 @@ package de.sayayi.lib.pack;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Range;
 
 import java.io.*;
 import java.util.Arrays;
 import java.util.OptionalInt;
 import java.util.zip.GZIPInputStream;
 
+import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.bitCount;
 
 
@@ -30,7 +32,7 @@ import static java.lang.Integer.bitCount;
  * @author Jeroen Gremmen
  * @since 0.1.0
  */
-public final class PackInputStream implements Closeable
+public class PackInputStream implements Closeable
 {
   private @NotNull InputStream stream;
   private final boolean compressed;
@@ -64,7 +66,7 @@ public final class PackInputStream implements Closeable
     else
       version = null;
 
-    if (packConfig.isCompressionSupport() && compressed)
+    if (compressed && packConfig.isCompressionSupport())
     {
       forceByteAlignment();
       this.stream = new GZIPInputStream(stream);
@@ -92,8 +94,17 @@ public final class PackInputStream implements Closeable
   }
 
 
-  public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType, int bitWidth) throws IOException
+  public void skipBoolean()  throws IOException
   {
+    assertData();
+    bit--;
+  }
+
+
+  public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType,
+                                                 @Range(from = 1, to = 16) int bitWidth) throws IOException
+  {
+    //noinspection ConstantValue
     if (bitWidth <= 0 || bitWidth > 16)
       throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
 
@@ -103,17 +114,20 @@ public final class PackInputStream implements Closeable
 
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType) throws IOException
   {
-    final T[] enums = enumType.getEnumConstants();
-
-    int n = enums.length;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-
-    var bits = bitCount(n);
+    final var enums = enumType.getEnumConstants();
+    final var n = enums.length;
+    final var bits = bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8));
 
     return enums[bits <= 8 ? readSmall(bits) : (int)readLarge(bits)];
+  }
+
+
+  public <T extends Enum<T>> void skipEnum(@NotNull Class<T> enumType) throws IOException
+  {
+    final var enums = enumType.getEnumConstants();
+    final var n = enums.length;
+
+    skip(bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
   }
 
 
@@ -122,13 +136,55 @@ public final class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public int readUnsignedShort() throws IOException {
+  public @Range(from = 0, to = 65535) int readUnsignedShort() throws IOException {
     return (int)readLarge(16);
   }
 
 
-  public long readLong() throws IOException {
-    return readLarge(64);
+  public void skipUnsignedShort() throws IOException {
+    skip(16);
+  }
+
+
+  public int readInt() throws IOException
+  {
+    if (bit >= 0 && bit < 7)
+      return (int)readLarge(32);
+
+    var i = (int)b;
+
+    for(var n = bit < 0 ? 4 : 3; n >= 0; n--)
+      i = (i << 8) | ((int)read() & 0xff);
+
+    bit = -1;
+
+    return i;
+  }
+
+
+  public void skipInt() throws IOException {
+    skip(32);
+  }
+
+
+  public long readLong() throws IOException
+  {
+    if (bit >= 0 && bit < 7)
+      return readLarge(64);
+
+    var l = (long)b;
+
+    for(var n = bit < 0 ? 8 : 7; n >= 0; n--)
+      l = (l << 8) | ((long)read() & 0xff);
+
+    bit = -1;
+
+    return l;
+  }
+
+
+  public void skipLong() throws IOException {
+    skip(64);
   }
 
 
@@ -221,17 +277,34 @@ public final class PackInputStream implements Closeable
   }
 
 
-  private void assertData() throws IOException
+  public void skipString() throws IOException
   {
-    if (bit < 0)
-    {
-      int c = stream.read();
-      if (c < 0)
-        throw new EOFException("unexpected end of pack stream");
+    int utflen = 0;
 
-      b = (byte)c;
-      bit = 7;
+    switch(readSmall(2))
+    {
+      case 0b00:
+        return;
+
+      case 0b01:
+        if ((utflen = readSmall(4)) == 0)
+          return;
+        break;
+
+      case 0b10:
+        utflen = readSmall(8);
+        break;
+
+      case 0b11:
+        utflen = (int)readLarge(16);
+        break;
     }
+
+    forceByteAlignment();
+
+    var bytes = new byte[utflen];
+    if (stream.read(bytes) != utflen)
+      throw new EOFException("unexpected end of pack stream while skipping utf string");
   }
 
 
@@ -242,7 +315,7 @@ public final class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public int readSmallVar() throws IOException
+  public @Range(from = 0, to = 255) int readSmallVar() throws IOException
   {
     var v4 = readSmall(4);
 
@@ -255,6 +328,15 @@ public final class PackInputStream implements Closeable
   }
 
 
+  public void skipSmallVar() throws IOException
+  {
+    var v4 = readSmall(4);
+
+    if ((v4 & 0b1000) != 0)
+      skip((v4 & 0b0100) == 0 ? 1 : 6);
+  }
+
+
   /**
    * @param bitWidth  bit width (1..8)
    *
@@ -262,7 +344,7 @@ public final class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public int readSmall(int bitWidth) throws IOException
+  public @Range(from = 0, to = 255) int readSmall(@Range(from = 1, to = 8) int bitWidth) throws IOException
   {
     assertData();
 
@@ -299,7 +381,7 @@ public final class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
-  public long readLarge(int bitWidth) throws IOException
+  public long readLarge(@Range(from = 9, to = 64) int bitWidth) throws IOException
   {
     assertData();
 
@@ -329,15 +411,55 @@ public final class PackInputStream implements Closeable
   }
 
 
-  private void forceByteAlignment()
+  protected void assertData() throws IOException
+  {
+    if (bit < 0)
+    {
+      b = read();
+      bit = 7;
+    }
+  }
+
+
+  protected void forceByteAlignment()
   {
     if (bit >= 0)
       bit = -1;
   }
 
 
+  public void skip(@Range(from = 0, to = MAX_VALUE) int bitWidth) throws IOException
+  {
+    while(bitWidth > 0)
+    {
+      assertData();
+
+      if (bitWidth <= (bit + 1))
+      {
+        bit -= bitWidth;
+        break;
+      }
+      else
+      {
+        bitWidth -= bit + 1;
+        bit = -1;
+      }
+    }
+  }
+
+
   @Override
   public void close() throws IOException {
     stream.close();
+  }
+
+
+  protected byte read() throws IOException
+  {
+    var c = stream.read();
+    if (c < 0)
+      throw new EOFException("unexpected end of pack stream");
+
+    return (byte)c;
   }
 }
