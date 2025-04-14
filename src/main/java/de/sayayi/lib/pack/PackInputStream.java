@@ -45,17 +45,19 @@ public class PackInputStream implements Closeable
   {
     this.stream = stream;
 
-    var magic = packConfig.getMagic();
-    if (magic.length != 0)
+    final var magic = packConfig.getMagic();
+    final var magicLength = magic.length;
+
+    if (magicLength != 0)
     {
-      var header = new byte[magic.length];
-      if (stream.read(header) != header.length || !Arrays.equals(header, magic))
+      final var header = new byte[magicLength];
+      if (stream.read(header) != magicLength || !Arrays.equals(header, magic))
         throw new IOException("pack stream has wrong header magic");
     }
 
     compressed = packConfig.isCompressionSupport() && readBoolean();
 
-    var versionBits = packConfig.getVersionBits();
+    final var versionBits = packConfig.getVersionBits();
     if (versionBits != 0)
     {
       if (versionBits <= 8)
@@ -86,6 +88,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public boolean readBoolean() throws IOException
   {
     assertData();
@@ -94,6 +97,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public void skipBoolean()  throws IOException
   {
     assertData();
@@ -101,6 +105,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType,
                                                  @Range(from = 1, to = 16) int bitWidth) throws IOException
   {
@@ -112,6 +117,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType) throws IOException
   {
     final var enums = enumType.getEnumConstants();
@@ -122,6 +128,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public <T extends Enum<T>> void skipEnum(@NotNull Class<T> enumType) throws IOException
   {
     final var enums = enumType.getEnumConstants();
@@ -136,16 +143,19 @@ public class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public @Range(from = 0, to = 65535) int readUnsignedShort() throws IOException {
     return (int)readLarge(16);
   }
 
 
+  @Contract(mutates = "this,io")
   public void skipUnsignedShort() throws IOException {
     skip(16);
   }
 
 
+  @Contract(mutates = "this,io")
   public int readInt() throws IOException
   {
     if (bit >= 0 && bit < 7)
@@ -162,11 +172,13 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public void skipInt() throws IOException {
     skip(32);
   }
 
 
+  @Contract(mutates = "this,io")
   public long readLong() throws IOException
   {
     if (bit >= 0 && bit < 7)
@@ -183,11 +195,13 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public void skipLong() throws IOException {
     skip(64);
   }
 
 
+  @Contract(mutates = "this,io")
   public String readString() throws IOException
   {
     int utflen = 0;
@@ -277,6 +291,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public void skipString() throws IOException
   {
     int utflen = 0;
@@ -315,9 +330,10 @@ public class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public @Range(from = 0, to = 255) int readSmallVar() throws IOException
   {
-    var v4 = readSmall(4);
+    final var v4 = readSmall(4);
 
     if ((v4 & 0b1000) == 0)  // 0vvv
       return v4;
@@ -328,9 +344,10 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public void skipSmallVar() throws IOException
   {
-    var v4 = readSmall(4);
+    final var v4 = readSmall(4);
 
     if ((v4 & 0b1000) != 0)
       skip((v4 & 0b0100) == 0 ? 1 : 6);
@@ -344,11 +361,12 @@ public class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public @Range(from = 0, to = 255) int readSmall(@Range(from = 1, to = 8) int bitWidth) throws IOException
   {
     assertData();
 
-    var bitsRemaining = bit + 1 - bitWidth;
+    final var bitsRemaining = bit + 1 - bitWidth;
 
     if (bitsRemaining > 0)
     {
@@ -381,6 +399,7 @@ public class PackInputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public long readLarge(@Range(from = 9, to = 64) int bitWidth) throws IOException
   {
     assertData();
@@ -411,6 +430,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   protected void assertData() throws IOException
   {
     if (bit < 0)
@@ -421,6 +441,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this")
   protected void forceByteAlignment()
   {
     if (bit >= 0)
@@ -428,6 +449,7 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   public void skip(@Range(from = 0, to = MAX_VALUE) int bitWidth) throws IOException
   {
     while(bitWidth > 0)
@@ -454,9 +476,10 @@ public class PackInputStream implements Closeable
   }
 
 
+  @Contract(mutates = "io")
   protected byte read() throws IOException
   {
-    var c = stream.read();
+    final var c = stream.read();
     if (c < 0)
       throw new EOFException("unexpected end of pack stream");
 

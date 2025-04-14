@@ -87,28 +87,43 @@ public class PackConfig
     private boolean compressionSupport = false;
 
 
-    protected @NotNull Builder withMagic(byte @NotNull [] magic)
+    @Contract("-> this")
+    public @NotNull Builder noVersion()
+    {
+      lowestVersionNumber = 0;
+      versionBits = 0;
+
+      return this;
+    }
+
+
+    @Contract("_ -> this")
+    public @NotNull Builder withMagic(byte @NotNull [] magic)
     {
       this.magic = Objects.requireNonNull(magic, "magic must not be null");
       return this;
     }
 
 
-    protected @NotNull Builder withMagic(@NotNull String magic) {
+    @Contract("_ -> this")
+    public @NotNull Builder withMagic(@NotNull String magic) {
       return withMagic(magic.getBytes(US_ASCII));
     }
 
 
-    protected @NotNull Builder withMagic(@NotNull String magic, @NotNull Charset charset) {
+    @Contract("_, _ -> this")
+    public @NotNull Builder withMagic(@NotNull String magic, @NotNull Charset charset) {
       return withMagic(magic.getBytes(charset));
     }
 
 
+    @Contract("-> this")
     public @NotNull Builder withCompressionSupport() {
       return withCompressionSupport(true);
     }
 
 
+    @Contract("_ -> this")
     public @NotNull Builder withCompressionSupport(boolean compressionSupport)
     {
       this.compressionSupport = compressionSupport;
@@ -116,6 +131,7 @@ public class PackConfig
     }
 
 
+    @Contract("_, _ -> this")
     public @NotNull Builder withVersionRange(int lowestVersion, int highestVersion)
     {
       if (lowestVersion < 0)
