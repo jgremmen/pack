@@ -33,13 +33,13 @@ import static java.nio.file.Files.newInputStream;
  * @author Jeroen Gremmen
  * @since 0.1.0
  */
-public abstract class AbstractPackFileTypeDetector extends FileTypeDetector
+public abstract class AbstractFileTypeDetector extends FileTypeDetector
 {
   private final PackConfig packConfig;
   private final String mimeType;
 
 
-  protected AbstractPackFileTypeDetector(@NotNull PackConfig packConfig, @NotNull String mimeType)
+  protected AbstractFileTypeDetector(@NotNull PackConfig packConfig, @NotNull String mimeType)
   {
     this.packConfig = packConfig;
     this.mimeType = mimeType;
