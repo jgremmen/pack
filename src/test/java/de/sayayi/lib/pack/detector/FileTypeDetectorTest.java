@@ -17,12 +17,9 @@ package de.sayayi.lib.pack.detector;
 
 import de.sayayi.lib.pack.PackConfig;
 import de.sayayi.lib.pack.PackOutputStream;
-import org.apache.tika.exception.TikaException;
 import org.apache.tika.mime.MediaType;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -38,7 +35,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * @author Jeroen Gremmen
  * @since 0.1.0
  */
-@TestMethodOrder(MethodOrderer.DisplayName.class)
 @DisplayName("File type detector")
 class FileTypeDetectorTest
 {
@@ -54,20 +50,21 @@ class FileTypeDetectorTest
 
   @Test
   @DisplayName("Detect")
-  void detect() throws IOException, TikaException
+  void detect() throws IOException
   {
-    try(var fileStream = newOutputStream(tempDir.resolve("test.pack"));
-        var packStream = new PackOutputStream(PACK_CONFIG, 85, fileStream)) {
+    final var packPath = tempDir.resolve("test.pack");
+
+    try(var packStream = new PackOutputStream(PACK_CONFIG, 12, false, newOutputStream(packPath))) {
       packStream.writeSmall(5, 3);
       packStream.writeBoolean(true);
       packStream.writeEnum(ElementType.LOCAL_VARIABLE);
     }
 
-    final var mediaType = MediaType.parse(probeContentType(tempDir.resolve("test.pack")));
+    final var mediaType = MediaType.parse(probeContentType(packPath));
 
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
-    assertEquals("85", mediaType.getParameters().get("version"));
-    assertEquals("true", mediaType.getParameters().get("compress"));
+    assertEquals("12", mediaType.getParameters().get("version"));
+    assertEquals("false", mediaType.getParameters().get("compress"));
   }
 
 
