@@ -39,6 +39,23 @@ public class PackOutputStream implements Closeable
 
 
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
+                          @NotNull OutputStream stream) throws IOException {
+    this(packConfig, version, packConfig.isCompressionSupport(), stream);
+  }
+
+
+  public PackOutputStream(@NotNull PackConfig packConfig, @NotNull OutputStream stream) throws IOException {
+    this(packConfig, packConfig.getLowestVersionNumber(), packConfig.isCompressionSupport(), stream);
+  }
+
+
+  public PackOutputStream(@NotNull PackConfig packConfig, boolean compress, @NotNull OutputStream stream)
+      throws IOException {
+    this(packConfig, packConfig.getLowestVersionNumber(), compress, stream);
+  }
+
+
+  public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           boolean compress, @NotNull OutputStream stream) throws IOException
   {
     this.stream = stream;
@@ -47,6 +64,8 @@ public class PackOutputStream implements Closeable
 
     if (packConfig.isCompressionSupport())
       writeBoolean(compress);
+    else if (compress)
+      throw new IllegalArgumentException("Compression is not supported");
 
     var versionBits = packConfig.getVersionBits();
     if (versionBits != 0)
