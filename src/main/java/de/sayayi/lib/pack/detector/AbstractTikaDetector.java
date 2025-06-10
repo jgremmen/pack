@@ -32,7 +32,7 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 
 
 /**
- * File type detector for packs.
+ * Tika detector for packs.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
