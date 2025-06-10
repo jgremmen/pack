@@ -91,6 +91,13 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Write a boolean value to the output stream.
+   *
+   * @param value  boolean value to write
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   public void writeBoolean(boolean value) throws IOException
   {
     if (value)
@@ -105,6 +112,16 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Write an enumerated value to the output stream.
+   *
+   * @param value     enumerated value to write, not {@code null}
+   * @param bitWidth  number of bits to use for the enumerated value
+   *
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16 or if the ordinal of
+   *                                   the enumerated value exceeds the {@code bitWidth}
+   * @throws IOException               if an I/O error occurs
+   */
   public <T extends Enum<T>> void writeEnum(@NotNull T value, @Range(from = 1, to = 16) int bitWidth) throws IOException
   {
     //noinspection ConstantValue
@@ -122,6 +139,13 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Write an enumerated value to the output stream.
+   *
+   * @param value  enumerated value to write, not {@code null}
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException
   {
     var n = value.getClass().getEnumConstants().length;
