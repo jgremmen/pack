@@ -7,7 +7,7 @@ plugins {
 
 description 'Java Pack Library'
 group 'de.sayayi.lib'
-version '0.1.1'
+version '0.1.2-SNAPSHOT'
 
 
 layout.buildDirectory = '.build'
