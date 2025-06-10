@@ -47,6 +47,8 @@ class PackStreamTest
       .withMagic("MyTeSt\u0007**")
       .build();
 
+  private static final Random RANDOM = new Random();
+
 
   @Test
   @DisplayName("Pack/unpack a mixture of types")
@@ -87,17 +89,21 @@ class PackStreamTest
   void packSmallVar() throws IOException
   {
     var byteStream = new ByteArrayOutputStream();
+    var numbers = new int[10000];
+
+    for(int n = 0; n < numbers.length; n++)
+      numbers[n] = RANDOM.nextInt(256);
 
     try(var packStream = new PackOutputStream(PACK_CONFIG, byteStream)) {
-      for(int n = 0; n < 255; n++)
-        packStream.writeSmallVar(n);
+      for(int number: numbers)
+        packStream.writeSmallVar(number);
     }
 
     var packed = byteStream.toByteArray();
 
     try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
-      for(int n = 0; n < 255; n++)
-        assertEquals(n, packStream.readSmallVar());
+      for(int number: numbers)
+        assertEquals(number, packStream.readSmallVar());
     }
   }
 
@@ -192,6 +198,74 @@ class PackStreamTest
     try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
       for(int n = 0; n < bits.length(); n++)
         assertEquals(bits.get(n), packStream.readBoolean());
+    }
+  }
+
+
+  @Test
+  @DisplayName("Pack/unpack int values")
+  void packInt() throws IOException
+  {
+    var byteStream = new ByteArrayOutputStream();
+    var paddingBits = new byte[10000];
+    var numbers = new int[10000];
+
+    for(int n = 0; n < numbers.length; n++)
+    {
+      paddingBits[n] = (byte)(RANDOM.nextInt(7) + 1);
+      numbers[n] = RANDOM.nextInt();
+    }
+
+    try(var packStream = new PackOutputStream(PACK_CONFIG, byteStream)) {
+      for(int n = 0; n < numbers.length; n++)
+      {
+        packStream.writeSmall(0, paddingBits[n]);
+        packStream.writeInt(numbers[n]);
+      }
+    }
+
+    var packed = byteStream.toByteArray();
+
+    try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
+      for(int n = 0; n < numbers.length; n++)
+      {
+        assertEquals(0, packStream.readSmall(paddingBits[n]));
+        assertEquals(numbers[n], packStream.readInt());
+      }
+    }
+  }
+
+
+  @Test
+  @DisplayName("Pack/unpack long values")
+  void packLong() throws IOException
+  {
+    var byteStream = new ByteArrayOutputStream();
+    var paddingBits = new byte[10000];
+    var numbers = new long[10000];
+
+    for(int n = 0; n < numbers.length; n++)
+    {
+      paddingBits[n] = (byte)(RANDOM.nextInt(7) + 1);
+      numbers[n] = RANDOM.nextLong();
+    }
+
+    try(var packStream = new PackOutputStream(PACK_CONFIG, byteStream)) {
+      for(int n = 0; n < numbers.length; n++)
+      {
+        packStream.writeSmall(0, paddingBits[n]);
+        packStream.writeLong(numbers[n]);
+      }
+    }
+
+    var packed = byteStream.toByteArray();
+
+    try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
+      for(int n = 0; n < numbers.length; n++)
+      {
+        assertEquals(0, packStream.readSmall(paddingBits[n]));
+        assertEquals(numbers[n], packStream.readLong());
+      }
     }
   }
 }

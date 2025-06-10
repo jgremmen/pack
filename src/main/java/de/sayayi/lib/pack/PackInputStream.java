@@ -68,7 +68,7 @@ public class PackInputStream implements Closeable
     else
       version = null;
 
-    if (compressed && packConfig.isCompressionSupport())
+    if (compressed)
     {
       forceByteAlignment();
       this.stream = new GZIPInputStream(stream);
@@ -156,19 +156,8 @@ public class PackInputStream implements Closeable
 
 
   @Contract(mutates = "this,io")
-  public int readInt() throws IOException
-  {
-    if (bit >= 0 && bit < 7)
-      return (int)readLarge(32);
-
-    var i = (int)b;
-
-    for(var n = bit < 0 ? 4 : 3; n >= 0; n--)
-      i = (i << 8) | ((int)read() & 0xff);
-
-    bit = -1;
-
-    return i;
+  public int readInt() throws IOException {
+    return (int)readLarge(32);
   }
 
 
@@ -179,19 +168,8 @@ public class PackInputStream implements Closeable
 
 
   @Contract(mutates = "this,io")
-  public long readLong() throws IOException
-  {
-    if (bit >= 0 && bit < 7)
-      return readLarge(64);
-
-    var l = (long)b;
-
-    for(var n = bit < 0 ? 8 : 7; n >= 0; n--)
-      l = (l << 8) | ((long)read() & 0xff);
-
-    bit = -1;
-
-    return l;
+  public long readLong() throws IOException {
+    return readLarge(64);
   }
 
 
