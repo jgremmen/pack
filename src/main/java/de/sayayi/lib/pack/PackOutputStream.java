@@ -81,7 +81,7 @@ public class PackOutputStream implements Closeable
         writeLarge(version, versionBits);
     }
 
-    if (compress && packConfig.isCompressionSupport())
+    if (compress)
     {
       forceByteAlignment();
       stream.flush();

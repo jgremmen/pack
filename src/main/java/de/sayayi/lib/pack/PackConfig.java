@@ -21,9 +21,9 @@ import org.jetbrains.annotations.Range;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.Objects;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -38,9 +38,10 @@ public class PackConfig
   protected final boolean compressionSupport;
 
 
-  protected PackConfig(byte @NotNull [] magic, int lowestVersionNumber, int versionBits, boolean compressionSupport)
+  protected PackConfig(byte @NotNull [] magic, int lowestVersionNumber,
+                       @Range(from = 0, to = 31) int versionBits, boolean compressionSupport)
   {
-    this.magic = magic;
+    this.magic = requireNonNull(magic);
     this.lowestVersionNumber = lowestVersionNumber;
     this.versionBits = versionBits;
     this.compressionSupport = compressionSupport;
@@ -100,7 +101,7 @@ public class PackConfig
     @Contract("_ -> this")
     public @NotNull Builder withMagic(byte @NotNull [] magic)
     {
-      this.magic = Objects.requireNonNull(magic, "magic must not be null");
+      this.magic = requireNonNull(magic, "magic must not be null");
       return this;
     }
 
