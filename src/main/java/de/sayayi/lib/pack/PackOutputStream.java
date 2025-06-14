@@ -39,28 +39,36 @@ public class PackOutputStream implements Closeable
   private byte b;
 
 
+  /**
+   * @since 0.1.2
+   */
+  @Contract(mutates = "param2,io")
   public PackOutputStream(boolean compress, @NotNull OutputStream stream) throws IOException {
     this(new PackConfig.Builder().withCompressionSupport().build(), compress, stream);
   }
 
 
+  @Contract(mutates = "param3,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           @NotNull OutputStream stream) throws IOException {
     this(packConfig, version, packConfig.isCompressionSupport(), stream);
   }
 
 
+  @Contract(mutates = "param2,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @NotNull OutputStream stream) throws IOException {
     this(packConfig, packConfig.getLowestVersionNumber(), packConfig.isCompressionSupport(), stream);
   }
 
 
+  @Contract(mutates = "param3,io")
   public PackOutputStream(@NotNull PackConfig packConfig, boolean compress, @NotNull OutputStream stream)
       throws IOException {
     this(packConfig, packConfig.getLowestVersionNumber(), compress, stream);
   }
 
 
+  @Contract(mutates = "param4,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           boolean compress, @NotNull OutputStream stream) throws IOException
   {
