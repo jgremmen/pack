@@ -187,17 +187,25 @@ public class PackOutputStream implements Closeable
 
 
   @Contract(mutates = "this,io")
-  public void writeString(String str) throws IOException
+  public void writeString(String string) throws IOException
   {
-    if (str == null)
+    if (string == null)
     {
       writeSmall(0, 2);
       return;
     }
 
-    var utfLength = getUTFLength(str);
-    if (utfLength > 0xffff)
-      throw new IllegalArgumentException("String too large");
+    final var stringLength = string.length();
+    var utfLength = 0;
+
+    for(int i = 0; i < stringLength; i++)
+    {
+      final var c = string.charAt(i);
+
+      utfLength += c >= 0x0001 && c <= 0x007F ? 1 : c > 0x07FF ? 3 : 2;
+      if (utfLength > 0xffff)
+        throw new IllegalArgumentException("String too large");
+    }
 
     if (utfLength < 16)
       writeSmall(0b01_0000 | utfLength, 6);
@@ -215,9 +223,9 @@ public class PackOutputStream implements Closeable
 
       final var bytes = new byte[utfLength];
 
-      for(int charIdx = 0, utfIdx = 0, stringLength = str.length(); charIdx < stringLength; charIdx++)
+      for(int charIdx = 0, utfIdx = 0; charIdx < stringLength; charIdx++)
       {
-        final var c = str.charAt(charIdx);
+        final var c = string.charAt(charIdx);
 
         if (c >= 0x0001 && c <= 0x007F)
           bytes[utfIdx++] = (byte)c;
@@ -236,27 +244,6 @@ public class PackOutputStream implements Closeable
 
       stream.write(bytes);
     }
-  }
-
-
-  @Contract(pure = true)
-  protected int getUTFLength(@NotNull String string)
-  {
-    var utflen = 0;
-
-    for(int i = 0, l = string.length(); i < l; i++)
-    {
-      int c = string.charAt(i);
-
-      if (c >= 0x0001 && c <= 0x007F)
-        utflen++;
-      else if (c > 0x07FF)
-        utflen += 3;
-      else
-        utflen += 2;
-    }
-
-    return utflen;
   }
 
 
