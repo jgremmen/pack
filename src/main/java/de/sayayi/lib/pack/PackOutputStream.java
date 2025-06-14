@@ -39,6 +39,11 @@ public class PackOutputStream implements Closeable
   private byte b;
 
 
+  public PackOutputStream(boolean compress, @NotNull OutputStream stream) throws IOException {
+    this(new PackConfig.Builder().withCompressionSupport().build(), compress, stream);
+  }
+
+
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           @NotNull OutputStream stream) throws IOException {
     this(packConfig, version, packConfig.isCompressionSupport(), stream);
@@ -357,6 +362,7 @@ public class PackOutputStream implements Closeable
   public void close() throws IOException
   {
     forceByteAlignment();
+
     stream.flush();
     stream.close();
   }

@@ -41,6 +41,11 @@ public class PackInputStream implements Closeable
   private byte b;
 
 
+  public PackInputStream(@NotNull InputStream stream) throws IOException {
+    this(new PackConfig.Builder().withCompressionSupport().build(), stream);
+  }
+
+
   public PackInputStream(@NotNull PackConfig packConfig, @NotNull InputStream stream) throws IOException
   {
     this.stream = stream;
