@@ -51,7 +51,7 @@ public class PackInputStream implements Closeable
     if (magicLength != 0)
     {
       final var header = new byte[magicLength];
-      if (stream.read(header) != magicLength || !Arrays.equals(header, magic))
+      if (stream.readNBytes(header, 0, magicLength) != magicLength || !Arrays.equals(header, magic))
         throw new IOException("pack stream has wrong header magic");
     }
 
@@ -208,42 +208,37 @@ public class PackInputStream implements Closeable
     final var chars = new char[utfBytesRemaining];  // safe size (probably too large)
     var charIdx = 0;
 
-    while(utfBytesRemaining > 0)
+    for(int b1, b2, b3; utfBytesRemaining > 0;)
     {
-      final var b1 = (int)read() & 0xff;
-
-      if ((b1 & 0b1000_0000) == 0)
+      if (((b1 = read()) & 0b1000_0000) == 0b0000_0000)  // 0xxx xxxx
       {
-        /* 0xxx xxxx*/
         utfBytesRemaining--;
         chars[charIdx++] = (char)b1;
       }
-      else if ((b1 & 0b1110_0000) == 0b1100_0000)
+      else if ((b1 & 0b1110_0000) == 0b1100_0000)  // 110x xxxx | 10xx xxxx
       {
-        /* 110x xxxx | 10xx xxxx*/
-        final var b2 = (int)read() & 0xff;
-        if ((utfBytesRemaining -= 2) < 0)
-          throw new UTFDataFormatException("malformed utf string: partial character at end");
+        utfBytesRemaining -= 2;
+        b2 = read();
+
+        if ((b2 & 0b1100_0000) != 0b1000_0000)
+          throw new UTFDataFormatException();
 
         chars[charIdx++] = (char)(((b1 & 0b0001_1111) << 6) | (b2 & 0b0011_1111));
       }
-      else if ((b1 & 0b11110000) == 0b11100000)  // 3 byte format
+      else if ((b1 & 0b11110000) == 0b11100000)  // 1110 xxxx | 10xx xxxx | 10xx xxxx
       {
-        /* 1110 xxxx | 10xx xxxx | 10xx xxxx */
-        if ((utfBytesRemaining -= 3) < 0)
-          throw new UTFDataFormatException("malformed utf string: partial character at end");
-
-        final var b2 = (int)read() & 0xff;
-        final var b3 = (int)read() & 0xff;
+        utfBytesRemaining -= 3;
+        b2 = read();
+        b3 = read();
 
         if ((b2 & 0b1100_0000) != 0b1000_0000 ||
             (b3 & 0b1100_0000) != 0b1000_0000)
-          throw new UTFDataFormatException("malformed utf string");
+          throw new UTFDataFormatException();
 
         chars[charIdx++] = (char)(((b1 & 0b0000_1111) << 12) | ((b2 & 0b0011_1111) << 6) | (b3 & 0b0011_1111));
       }
-      else
-        throw new UTFDataFormatException("malformed utf string");
+      else  // 10xx xxxx, 1111 xxxx
+        throw new UTFDataFormatException();
     }
 
     return new String(chars, 0, charIdx);
