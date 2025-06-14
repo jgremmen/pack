@@ -182,7 +182,7 @@ public class PackInputStream implements Closeable
   @Contract(mutates = "this,io")
   public String readString() throws IOException
   {
-    final int utfLength;
+    var utfBytesRemaining = 0;
 
     switch(readSmall(2))
     {
@@ -190,56 +190,54 @@ public class PackInputStream implements Closeable
         return null;
 
       case 0b01:
-        if ((utfLength = readSmall(4)) == 0)
+        if ((utfBytesRemaining = readSmall(4)) == 0)
           return "";
         break;
 
       case 0b10:
-        utfLength = readSmall(8);
+        utfBytesRemaining = readSmall(8);
         break;
 
       case 0b11:
-        utfLength = (int)readLarge(16);
+        utfBytesRemaining = (int)readLarge(16);
         break;
-
-      default:  // never reached
-        throw new IllegalStateException();
     }
 
     forceByteAlignment();
 
-    final var chars = new char[utfLength];
-    int charIdx = 0;
+    final var chars = new char[utfBytesRemaining];  // safe size (probably too large)
+    var charIdx = 0;
 
-    for(var utfIdx = 0; utfIdx < utfLength;)
+    while(utfBytesRemaining > 0)
     {
       final var b1 = (int)read() & 0xff;
 
-      if ((b1 & 0b1000_0000) == 0)  // 1 byte format
+      if ((b1 & 0b1000_0000) == 0)
       {
         /* 0xxx xxxx*/
-        utfIdx++;
+        utfBytesRemaining--;
         chars[charIdx++] = (char)b1;
       }
-      else if ((b1 & 0b1110_0000) == 0b1100_0000)  // 2 byte format
+      else if ((b1 & 0b1110_0000) == 0b1100_0000)
       {
-        /* 110x xxxx  10xx xxxx*/
+        /* 110x xxxx | 10xx xxxx*/
         final var b2 = (int)read() & 0xff;
-        if ((utfIdx += 2) > utfLength)
+        if ((utfBytesRemaining -= 2) < 0)
           throw new UTFDataFormatException("malformed utf string: partial character at end");
 
         chars[charIdx++] = (char)(((b1 & 0b0001_1111) << 6) | (b2 & 0b0011_1111));
       }
       else if ((b1 & 0b11110000) == 0b11100000)  // 3 byte format
       {
-        /* 1110 xxxx  10xx xxxx  10xx xxxx */
-        if ((utfIdx += 3) > utfLength)
+        /* 1110 xxxx | 10xx xxxx | 10xx xxxx */
+        if ((utfBytesRemaining -= 3) < 0)
           throw new UTFDataFormatException("malformed utf string: partial character at end");
 
         final var b2 = (int)read() & 0xff;
         final var b3 = (int)read() & 0xff;
 
-        if ((b2 & 0b1100_0000) != 0b1000_0000 || (b3 & 0b1100_0000) != 0b1000_0000)
+        if ((b2 & 0b1100_0000) != 0b1000_0000 ||
+            (b3 & 0b1100_0000) != 0b1000_0000)
           throw new UTFDataFormatException("malformed utf string");
 
         chars[charIdx++] = (char)(((b1 & 0b0000_1111) << 12) | ((b2 & 0b0011_1111) << 6) | (b3 & 0b0011_1111));
