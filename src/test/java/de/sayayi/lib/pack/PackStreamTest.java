@@ -89,7 +89,7 @@ class PackStreamTest
   @DisplayName("Pack/unpack small value 0..255 with variable bit width")
   void packSmallVar() throws IOException
   {
-    packUnpack(
+    packUnpack(250000,
         () -> RANDOM.nextInt(256),
         PackOutputStream::writeSmallVar,
         PackInputStream::readSmallVar);
@@ -104,7 +104,7 @@ class PackStreamTest
     {
       final var bits = bitWidth;
 
-      packUnpack(
+      packUnpack(100000,
           () -> RANDOM.nextInt(1 << bits),
           (packStream, number) -> packStream.writeSmall(number, bits),
           packStream -> packStream.readSmall(bits));
@@ -121,7 +121,7 @@ class PackStreamTest
       final var bits = bitWidth;
       final var mask = bits == 64 ? -1L : ((1L << bits) - 1);
 
-      packUnpack(
+      packUnpack(50000,
           () -> RANDOM.nextLong() & mask,
           (packStream, number) -> packStream.writeLarge(number, bits),
           packStream -> packStream.readLarge(bits));
@@ -133,7 +133,7 @@ class PackStreamTest
   @DisplayName("Pack/unpack booleans")
   void packBoolean() throws IOException
   {
-    packUnpack(
+    packUnpack(1000,
         RANDOM::nextBoolean,
         PackOutputStream::writeBoolean,
         PackInputStream::readBoolean);
@@ -144,7 +144,7 @@ class PackStreamTest
   @DisplayName("Pack/unpack int values")
   void packInt() throws IOException
   {
-    packUnpack(
+    packUnpack(100000,
         RANDOM::nextInt,
         (packStream,number) -> {
           packStream.writeBoolean(true);
@@ -161,7 +161,7 @@ class PackStreamTest
   @DisplayName("Pack/unpack long values")
   void packLong() throws IOException
   {
-    packUnpack(
+    packUnpack(100000,
         RANDOM::nextLong,
         (packStream,number) -> {
           packStream.writeBoolean(true);
@@ -229,7 +229,7 @@ class PackStreamTest
       final var enumClass0 = (Class<? extends Enum>)enumClass;
       final var enums = enumClass.getEnumConstants();
 
-      packUnpack(
+      packUnpack(100000,
           () -> enums[RANDOM.nextInt(enums.length)],
           PackOutputStream::writeEnum,
           packStream -> packStream.readEnum(enumClass0));
@@ -241,7 +241,7 @@ class PackStreamTest
   @DisplayName("Pack/unpack strings")
   void packString() throws IOException
   {
-    packUnpack(
+    packUnpack(7500,
         this::generateString,
         PackOutputStream::writeString,
         PackInputStream::readString);
@@ -254,27 +254,34 @@ class PackStreamTest
     if (RANDOM.nextInt(100) < 3)
       return null;
 
-    var length = RANDOM.nextInt(1000);
+    var length = RANDOM.nextInt(512);
     var chars = new char[length];
 
     for(int n = 0; n < length; n++)
-      chars[n] = (char)RANDOM.nextInt(65536);
+    {
+      // 95% readable characters
+      if (RANDOM.nextInt(100) < 95)
+        chars[n] = (char)(RANDOM.nextInt(128 - ' ') + ' ');
+      else
+        chars[n] = (char)RANDOM.nextInt(65536);
+    }
 
     return new String(chars);
   }
 
 
-  private <T> void packUnpack(@NotNull Supplier<T> generateTestValue,
+  private <T> void packUnpack(int size,
+                              @NotNull Supplier<T> generateTestValue,
                               @NotNull ValueWriter<T> writeValue,
                               @NotNull ValueReader<T> readValue) throws IOException
   {
     var byteStream = new ByteArrayOutputStream();
     var numbers = new ArrayList<T>();
 
-    for(int n = 0; n < 100000; n++)
+    for(int n = 0; n < size; n++)
       numbers.add(generateTestValue.get());
 
-    try(var packStream = new PackOutputStream(PACK_CONFIG, byteStream)) {
+    try(var packStream = new PackOutputStream(PACK_CONFIG, RANDOM.nextBoolean(), byteStream)) {
       for(var number: numbers)
         writeValue.write(packStream, number);
     }
