@@ -15,6 +15,7 @@
  */
 package de.sayayi.lib.pack;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Range;
 
@@ -98,6 +99,7 @@ public class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public void writeBoolean(boolean value) throws IOException
   {
     if (value)
@@ -122,6 +124,7 @@ public class PackOutputStream implements Closeable
    *                                   the enumerated value exceeds the {@code bitWidth}
    * @throws IOException               if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public <T extends Enum<T>> void writeEnum(@NotNull T value, @Range(from = 1, to = 16) int bitWidth) throws IOException
   {
     //noinspection ConstantValue
@@ -146,6 +149,7 @@ public class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException
   {
     var n = value.getClass().getEnumConstants().length;
@@ -159,21 +163,25 @@ public class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public void writeUnsignedShort(@Range(from = 0, to = 65535) int value) throws IOException {
     writeLarge(value, 16);
   }
 
 
+  @Contract(mutates = "this,io")
   public void writeInt(int value) throws IOException {
     writeLarge(value, 32);
   }
 
 
+  @Contract(mutates = "this,io")
   public void writeLong(long value) throws IOException {
     writeLarge(value, 64);
   }
 
 
+  @Contract(mutates = "this,io")
   public void writeString(String str) throws IOException
   {
     if (str == null)
@@ -182,12 +190,58 @@ public class PackOutputStream implements Closeable
       return;
     }
 
-    var strlen = str.length();
-    int utflen = 0;
+    var utfLength = getUTFLength(str);
+    if (utfLength > 0xffff)
+      throw new IllegalArgumentException("String too large");
 
-    for(int i = 0; i < strlen; i++)
+    if (utfLength < 16)
+      writeSmall(0b01_0000 | utfLength, 6);
+    else if (utfLength < 256)
+      writeLarge(0b10_0000_0000 | utfLength, 10);
+    else
     {
-      int c = str.charAt(i);
+      writeSmall(0b11, 2);
+      writeLarge(utfLength, 16);
+    }
+
+    if (utfLength > 0)
+    {
+      forceByteAlignment();
+
+      final var bytes = new byte[utfLength];
+
+      for(int charIdx = 0, utfIdx = 0, stringLength = str.length(); charIdx < stringLength; charIdx++)
+      {
+        final var c = str.charAt(charIdx);
+
+        if (c >= 0x0001 && c <= 0x007F)
+          bytes[utfIdx++] = (byte)c;
+        else if (c > 0x07FF)
+        {
+          bytes[utfIdx++] = (byte)(0xE0 | ((c >> 12) & 0x0F));
+          bytes[utfIdx++] = (byte)(0x80 | ((c >>  6) & 0x3F));
+          bytes[utfIdx++] = (byte)(0x80 | ( c        & 0x3F));
+        }
+        else
+        {
+          bytes[utfIdx++] = (byte)(0xC0 | ((c >> 6) & 0x1F));
+          bytes[utfIdx++] = (byte)(0x80 | ( c       & 0x3F));
+        }
+      }
+
+      stream.write(bytes);
+    }
+  }
+
+
+  @Contract(pure = true)
+  protected int getUTFLength(@NotNull String string)
+  {
+    var utflen = 0;
+
+    for(int i = 0, l = string.length(); i < l; i++)
+    {
+      int c = string.charAt(i);
 
       if (c >= 0x0001 && c <= 0x007F)
         utflen++;
@@ -197,43 +251,7 @@ public class PackOutputStream implements Closeable
         utflen += 2;
     }
 
-    if (utflen < 16)
-      writeSmall(0b01_0000 | utflen, 6);
-    else if (utflen < 256)
-      writeLarge(0b10_0000_0000 | utflen, 10);
-    else
-    {
-      writeSmall(0b11, 2);
-      writeLarge(utflen, 16);
-    }
-
-    if (utflen > 0)
-    {
-      forceByteAlignment();
-
-      var bytes = new byte[utflen];
-
-      for(int i = 0, count = 0; i < strlen; i++)
-      {
-        int c = str.charAt(i);
-
-        if (c >= 0x0001 && c <= 0x007F)
-          bytes[count++] = (byte)c;
-        else if (c > 0x07FF)
-        {
-          bytes[count++] = (byte)(0xE0 | ((c >> 12) & 0x0F));
-          bytes[count++] = (byte)(0x80 | ((c >>  6) & 0x3F));
-          bytes[count++] = (byte)(0x80 | ( c        & 0x3F));
-        }
-        else
-        {
-          bytes[count++] = (byte)(0xC0 | ((c >> 6) & 0x1F));
-          bytes[count++] = (byte)(0x80 | ( c       & 0x3F));
-        }
-      }
-
-      stream.write(bytes);
-    }
+    return utflen;
   }
 
 
@@ -244,6 +262,7 @@ public class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public void writeSmallVar(@Range(from = 0, to = 255) int value) throws IOException
   {
     if (value <= 7)
@@ -261,6 +280,7 @@ public class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public void writeSmall(@Range(from = 0, to = 255) int value,
                          @Range(from = 1, to = 8) int bitWidth) throws IOException
   {
@@ -295,6 +315,7 @@ public class PackOutputStream implements Closeable
    *
    * @throws IOException  if an I/O error occurs
    */
+  @Contract(mutates = "this,io")
   public void writeLarge(long value, @Range(from = 9, to = 64) int bitWidth) throws IOException
   {
     if (bit < 7)
@@ -320,6 +341,7 @@ public class PackOutputStream implements Closeable
   }
 
 
+  @Contract(mutates = "this,io")
   protected void forceByteAlignment() throws IOException
   {
     if (bit != 7)

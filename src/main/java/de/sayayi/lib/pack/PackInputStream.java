@@ -182,7 +182,7 @@ public class PackInputStream implements Closeable
   @Contract(mutates = "this,io")
   public String readString() throws IOException
   {
-    int utflen = 0;
+    final int utfLength;
 
     switch(readSmall(2))
     {
@@ -190,79 +190,62 @@ public class PackInputStream implements Closeable
         return null;
 
       case 0b01:
-        if ((utflen = readSmall(4)) == 0)
+        if ((utfLength = readSmall(4)) == 0)
           return "";
         break;
 
       case 0b10:
-        utflen = readSmall(8);
+        utfLength = readSmall(8);
         break;
 
       case 0b11:
-        utflen = (int)readLarge(16);
+        utfLength = (int)readLarge(16);
         break;
+
+      default:  // never reached
+        throw new IllegalStateException();
     }
 
     forceByteAlignment();
 
-    var bytes = new byte[utflen];
-    if (stream.read(bytes) != utflen)
-      throw new EOFException("unexpected end of pack stream while reading utf string");
-
-    var chars = new char[utflen];
+    final var chars = new char[utfLength];
     int charIdx = 0;
 
-    for(int count = 0; count < utflen;)
+    for(var utfIdx = 0; utfIdx < utfLength;)
     {
-      var c = (int)bytes[count] & 0xff;
+      final var b1 = (int)read() & 0xff;
 
-      switch(c >> 4)
+      if ((b1 & 0b1000_0000) == 0)  // 1 byte format
       {
-        case 0b0_000:
-        case 0b0_001:
-        case 0b0_010:
-        case 0b0_011:
-        case 0b0_100:
-        case 0b0_101:
-        case 0b0_110:
-        case 0b0_111:
-          /* 0xxx xxxx*/
-          count++;
-          chars[charIdx++] = (char)c;
-          break;
-
-        case 0b110_0:
-        case 0b110_1: {
-          /* 110x xxxx   10xx xxxx*/
-          if ((count += 2) > utflen)
-            throw new UTFDataFormatException("malformed input: partial character at end");
-
-          var char2 = bytes[count - 1];
-          if ((char2 & 0b1100_0000) != 0b1000_0000)
-            throw new UTFDataFormatException("malformed input around byte " + count);
-
-          chars[charIdx++] = (char)((c & 0b0001_1111) << 6 | (char2 & 0b0011_1111));
-          break;
-        }
-
-        case 0b1110: {
-          /* 1110 xxxx  10xx xxxx  10xx xxxx */
-          if ((count += 3) > utflen)
-            throw new UTFDataFormatException("malformed input: partial character at end");
-
-          var char2 = bytes[count - 2];
-          var char3 = bytes[count - 1];
-          if ((char2 & 0b1100_0000) != 0b1000_0000 || (char3 & 0b1100_0000) != 0b1000_0000)
-            throw new UTFDataFormatException("malformed input around byte " + (count - 1));
-
-          chars[charIdx++] = (char)(((c & 0b0000_1111) << 12) | ((char2 & 0b0011_1111) << 6) | (char3 & 0b0011_1111));
-          break;
-        }
-
-        default:
-          /* 10xx xxxx,  1111 xxxx */
-          throw new UTFDataFormatException("malformed input around byte " + count);
+        /* 0xxx xxxx*/
+        utfIdx++;
+        chars[charIdx++] = (char)b1;
       }
+      else if ((b1 & 0b1110_0000) == 0b1100_0000)  // 2 byte format
+      {
+        /* 110x xxxx  10xx xxxx*/
+        final var b2 = (int)read() & 0xff;
+        if ((utfIdx += 2) > utfLength)
+          throw new UTFDataFormatException("malformed utf string: partial character at end");
+
+        chars[charIdx++] = (char)(((b1 & 0b0001_1111) << 6) | (b2 & 0b0011_1111));
+      }
+      else if ((b1 & 0b11110000) == 0b11100000)  // 3 byte format
+      {
+        /* 1110 xxxx  10xx xxxx  10xx xxxx */
+        if ((utfIdx += 3) > utfLength)
+          throw new UTFDataFormatException("malformed utf string: partial character at end");
+
+        final var b2 = (int)read() & 0xff;
+        final var b3 = (int)read() & 0xff;
+
+        if ((b2 & 0b1100_0000) != 0b1000_0000 || (b3 & 0b1100_0000) != 0b1000_0000)
+          throw new UTFDataFormatException("malformed utf string");
+
+        chars[charIdx++] = (char)(((b1 & 0b0000_1111) << 12) | ((b2 & 0b0011_1111) << 6) | (b3 & 0b0011_1111));
+      }
+      else
+        throw new UTFDataFormatException("malformed utf string");
     }
 
     return new String(chars, 0, charIdx);
@@ -272,7 +255,7 @@ public class PackInputStream implements Closeable
   @Contract(mutates = "this,io")
   public void skipString() throws IOException
   {
-    int utflen = 0;
+    int utfLength = 0;
 
     switch(readSmall(2))
     {
@@ -280,24 +263,23 @@ public class PackInputStream implements Closeable
         return;
 
       case 0b01:
-        if ((utflen = readSmall(4)) == 0)
+        if ((utfLength = readSmall(4)) == 0)
           return;
         break;
 
       case 0b10:
-        utflen = readSmall(8);
+        utfLength = readSmall(8);
         break;
 
       case 0b11:
-        utflen = (int)readLarge(16);
+        utfLength = (int)readLarge(16);
         break;
     }
 
     forceByteAlignment();
 
-    var bytes = new byte[utflen];
-    if (stream.read(bytes) != utflen)
-      throw new EOFException("unexpected end of pack stream while skipping utf string");
+    while(utfLength-- > 0)
+      read();
   }
 
 
