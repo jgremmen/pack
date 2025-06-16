@@ -60,7 +60,7 @@ class TikaDetectorTest
 
 
   @Test
-  @DisplayName("Detect valid")
+  @DisplayName("Detect valid stream")
   void detectValid() throws IOException
   {
     final var byteStream = new ByteArrayOutputStream();
