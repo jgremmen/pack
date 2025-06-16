@@ -19,19 +19,20 @@ import de.sayayi.lib.pack.PackConfig;
 import de.sayayi.lib.pack.PackOutputStream;
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.CompositeDetector;
+import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 
+import static java.nio.charset.StandardCharsets.US_ASCII;
+import static org.apache.tika.mime.MediaType.OCTET_STREAM;
+import static org.apache.tika.mime.MediaType.TEXT_PLAIN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
@@ -49,10 +50,18 @@ class TikaDetectorTest
       .withMagic("MyTeSt\u0007**")
       .build();
 
+  private Detector detector;
+
+
+  @BeforeEach
+  void init() throws IOException, TikaException {
+    detector = new CompositeDetector(new MyTikaDetector(), new TikaConfig().getDetector());
+  }
+
 
   @Test
-  @DisplayName("Detect")
-  void detect() throws IOException, TikaException
+  @DisplayName("Detect valid")
+  void detectValid() throws IOException
   {
     final var byteStream = new ByteArrayOutputStream();
 
@@ -62,13 +71,25 @@ class TikaDetectorTest
       packStream.writeEnum(ElementType.LOCAL_VARIABLE);
     }
 
-    final var tikaDetector = new CompositeDetector(new MyTikaDetector(), new TikaConfig().getDetector());
-    final var mediaType = tikaDetector
-        .detect(new ByteArrayInputStream(byteStream.toByteArray()), new Metadata());
+    final var mediaType = detector.detect(new ByteArrayInputStream(byteStream.toByteArray()), new Metadata());
 
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
     assertEquals("85", mediaType.getParameters().get("version"));
     assertEquals("true", mediaType.getParameters().get("compress"));
+  }
+
+
+  @Test
+  @DisplayName("Detect empty stream")
+  void detectEmpty() throws IOException {
+    assertEquals(OCTET_STREAM, detector.detect(new ByteArrayInputStream(new byte[0]), new Metadata()));
+  }
+
+
+  @Test
+  @DisplayName("Detect incomplete stream")
+  void detectIncomplete() throws IOException {
+    assertEquals(TEXT_PLAIN, detector.detect(new ByteArrayInputStream("MyTeSt".getBytes(US_ASCII)), new Metadata()));
   }
 
 

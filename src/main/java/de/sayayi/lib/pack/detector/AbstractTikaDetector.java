@@ -60,6 +60,7 @@ public abstract class AbstractTikaDetector implements Detector
 
       try(var packStream = new PackInputStream(packConfig, input)) {
         return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
+      } catch(Exception ignored) {
       } finally {
         input.reset();
       }
