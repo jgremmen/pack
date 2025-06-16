@@ -62,7 +62,7 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   protected @NotNull String buildAnnotatedMimeType(@NotNull OptionalInt version, Boolean compressed)
   {
-    var m = new StringBuilder(mimeType);
+    final var m = new StringBuilder(mimeType);
 
     if (version.isPresent())
       m.append(";version=").append(version.getAsInt());
