@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'com.adarshr.test-logger' version '4.0.0'
 }
 
 
@@ -125,6 +126,12 @@ tasks.register('sourcesJar', Jar) {
 
     archiveClassifier.set('sources')
     from sourceSets.main.allSource
+}
+
+
+testlogger {
+    theme = 'mocha'
+    slowThreshold = 2500
 }
 
 
