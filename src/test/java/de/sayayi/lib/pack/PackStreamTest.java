@@ -276,20 +276,20 @@ class PackStreamTest
                               @NotNull ValueReader<T> readValue) throws IOException
   {
     var byteStream = new ByteArrayOutputStream();
-    var numbers = new ArrayList<T>();
+    var values = new ArrayList<T>();
 
     for(int n = 0; n < size; n++)
-      numbers.add(generateTestValue.get());
+      values.add(generateTestValue.get());
 
     try(var packStream = new PackOutputStream(PACK_CONFIG, RANDOM.nextBoolean(), byteStream)) {
-      for(var number: numbers)
+      for(var number: values)
         writeValue.write(packStream, number);
     }
 
     var packed = byteStream.toByteArray();
 
     try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
-      for(var number: numbers)
+      for(var number: values)
         assertEquals(number, readValue.read(packStream));
     }
   }
