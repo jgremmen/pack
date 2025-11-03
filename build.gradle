@@ -6,9 +6,9 @@ plugins {
 }
 
 
-description 'Java Pack Library'
-group 'de.sayayi.lib'
-version '0.1.4-SNAPSHOT'
+description = 'Java Pack Library'
+group = 'de.sayayi.lib'
+version = '0.1.4-SNAPSHOT'
 
 
 layout.buildDirectory = '.build'
@@ -75,7 +75,7 @@ def resolvedTikaVersion = configurations
 
 
 javadoc {
-    title "Java Pack Library ${version}"
+    title = "Java Pack Library ${version}"
 
     (options as StandardJavadocDocletOptions).with {
         linksOffline "https://javadoc.io/doc/org.jetbrains/annotations/${resolvedJetbrainsAnnotationsVersion}/",
@@ -88,12 +88,12 @@ javadoc {
         addStringOption('Xdoclint:-missing', '-quiet')
     }
 
-    failOnError false
+    failOnError = false
 }
 
 
 tasks.withType(Jar).configureEach {
-    reproducibleFileOrder true
+    reproducibleFileOrder = true
 
     manifest {
         attributes(
