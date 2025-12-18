@@ -206,7 +206,7 @@ public class PackOutputStream implements Closeable
     final var stringLength = string.length();
     var utfLength = 0;
 
-    for(int i = 0; i < stringLength; i++)
+    for(var i = 0; i < stringLength; i++)
     {
       final var c = string.charAt(i);
 

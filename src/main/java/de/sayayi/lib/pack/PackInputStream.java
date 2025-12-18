@@ -258,7 +258,7 @@ public class PackInputStream implements Closeable
   @Contract(mutates = "this,io")
   public void skipString() throws IOException
   {
-    int utfLength = 0;
+    var utfLength = 0;
 
     switch(readSmall(2))
     {
@@ -343,7 +343,7 @@ public class PackInputStream implements Closeable
     }
     else  // bitsRemaining < 0
     {
-      int value = (b & ((1 << (bit + 1)) - 1)) << -bitsRemaining;
+      var value = (b & ((1 << (bit + 1)) - 1)) << -bitsRemaining;
 
       bit = -1;
       assertData();
@@ -371,7 +371,7 @@ public class PackInputStream implements Closeable
 
     for(bitWidth -= bit + 1; bitWidth >= 8; bitWidth -= 8)
     {
-      int c = stream.read();
+      var c = stream.read();
       if (c < 0)
         throw new EOFException();
 

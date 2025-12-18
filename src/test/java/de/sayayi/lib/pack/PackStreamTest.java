@@ -55,7 +55,7 @@ class PackStreamTest
   @DisplayName("Pack/unpack a mixture of types")
   void packMixed() throws IOException
   {
-    var byteStream = new ByteArrayOutputStream();
+    final var byteStream = new ByteArrayOutputStream();
 
     try(var packStream = new PackOutputStream(PACK_CONFIG, byteStream)) {
       packStream.writeSmall(5, 3);
@@ -69,7 +69,7 @@ class PackStreamTest
       packStream.writeLong(Long.MIN_VALUE);
     }
 
-    var packed = byteStream.toByteArray();
+    final var packed = byteStream.toByteArray();
 
     try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
       assertEquals(5, packStream.readSmall(3));
@@ -254,10 +254,10 @@ class PackStreamTest
     if (RANDOM.nextInt(100) < 3)
       return null;
 
-    var length = RANDOM.nextInt(512);
-    var chars = new char[length];
+    final var length = RANDOM.nextInt(512);
+    final var chars = new char[length];
 
-    for(int n = 0; n < length; n++)
+    for(var n = 0; n < length; n++)
     {
       // 95% readable characters
       if (RANDOM.nextInt(100) < 95)
@@ -275,10 +275,10 @@ class PackStreamTest
                               @NotNull ValueWriter<T> writeValue,
                               @NotNull ValueReader<T> readValue) throws IOException
   {
-    var byteStream = new ByteArrayOutputStream();
-    var values = new ArrayList<T>();
+    final var byteStream = new ByteArrayOutputStream();
+    final var values = new ArrayList<T>();
 
-    for(int n = 0; n < size; n++)
+    for(var n = 0; n < size; n++)
       values.add(generateTestValue.get());
 
     try(var packStream = new PackOutputStream(PACK_CONFIG, RANDOM.nextBoolean(), byteStream)) {
@@ -286,7 +286,7 @@ class PackStreamTest
         writeValue.write(packStream, number);
     }
 
-    var packed = byteStream.toByteArray();
+    final var packed = byteStream.toByteArray();
 
     try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(packed))) {
       for(var number: values)
