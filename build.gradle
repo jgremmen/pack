@@ -1,7 +1,5 @@
 plugins {
   id 'java-library'
-  id 'maven-publish'
-  id 'signing'
   id 'com.adarshr.test-logger' version '4.0.0'
 }
 
@@ -14,17 +12,20 @@ version = libs.versions.pack.get()
 layout.buildDirectory = '.build'
 
 
+configurations {
+  optionalApi
+
+  compileOnlyApi.extendsFrom(optionalApi)
+}
+
+
 java {
   toolchain {
     languageVersion = JavaLanguageVersion.of(21)
   }
-}
 
-
-javadoc {
-  javadocTool = javaToolchains.javadocToolFor {
-    languageVersion = JavaLanguageVersion.of(21)
-  }
+  withSourcesJar()
+  withJavadocJar()
 }
 
 
@@ -37,6 +38,12 @@ test {
 }
 
 
+testlogger {
+  theme = 'mocha'
+  slowThreshold = 2500
+}
+
+
 repositories {
   mavenCentral()
 }
@@ -45,7 +52,8 @@ repositories {
 dependencies {
   // java
   compileOnlyApi libs.jetbrains.annotations
-  compileOnlyApi(libs.tika.core) {
+
+  optionalApi(libs.tika.core) {
     transitive = false
   }
 
@@ -102,7 +110,7 @@ tasks.withType(Jar).configureEach {
         'Implementation-Vendor-Id': 'de.sayayi',
         'Implementation-Title': project.name,
         'Implementation-Version': project.version,
-        'Created-By': "${System.getProperty('java.version')} (${System.getProperty('java.specification.vendor')})",
+        'Created-By': System.getProperty('java.version'),
         'Built-Date': new Date().format('yyyy-MM-dd HH:mm:ss')
     )
   }
@@ -113,97 +121,17 @@ tasks.withType(Jar).configureEach {
 }
 
 
-jar {
-  dependsOn test
+jar.dependsOn test
+
+
+apply from: file('gradle/publish.gradle')
+
+
+clean {
+  delete layout.projectDirectory.dir('build')
 }
 
 
-tasks.register('javadocJar', Jar) {
-  archiveClassifier.set('javadoc')
-  from javadoc
-}
-
-
-tasks.register('sourcesJar', Jar) {
-  dependsOn classes
-
-  archiveClassifier.set('sources')
-  from sourceSets.main.allSource
-}
-
-
-testlogger {
-  theme = 'mocha'
-  slowThreshold = 2500
-}
-
-
-def snapshot = version.toString().endsWith('-SNAPSHOT')
-def tmpRepositoryDirectory = rootProject.layout.buildDirectory
-    .dir('repository').get()
-    .dir(snapshot ? 'snapshot' : 'release')
-    .asFile
-
-
-publishing {
-  publications {
-    create('maven', MavenPublication) {
-      from components.java
-
-      artifact javadocJar
-      artifact sourcesJar
-
-      pom {
-        name = 'Java Pack Library'
-        description = "Java Pack Library"
-        url = 'https://github.com/jgremmen/zbdd'
-        inceptionYear = '2021'
-
-        licenses {
-          license {
-            name = 'Apache License, Version 2.0'
-            url = 'https://www.apache.org/licenses/LICENSE-2.0'
-            distribution = 'repo'
-          }
-        }
-
-        developers {
-          developer {
-            id = 'jgremmen'
-            name = 'Jeroen Gremmen'
-            email = 'jeroen.gremmen@sayayi.de'
-          }
-        }
-
-        scm {
-          connection = 'scm:git:git://github.com/jgremmen/pack.git'
-          developerConnection = 'scm:git:git://github.com/jgremmen/pack.git'
-          url = 'https://github.com/jgremmen/pack'
-        }
-      }
-    }
-  }
-
-  repositories {
-    maven {
-      name = 'mavenTemp'
-      url = tmpRepositoryDirectory
-    }
-    maven {
-      name = 'mavenCentral'
-      url = snapshot
-          ? 'https://oss.sonatype.org/content/repositories/snapshots'
-          : 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
-
-      credentials {
-        username = project.findProperty('mavenCentral.username')
-        password = project.findProperty('mavenCentral.password')
-      }
-    }
-  }
-}
-
-
-signing {
-  sign publishing.publications.maven
+wrapper {
+  distributionType = Wrapper.DistributionType.BIN
 }
