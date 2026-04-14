@@ -29,8 +29,22 @@ import static java.lang.Integer.bitCount;
 
 
 /**
+ * Output stream for writing data in the pack binary format.
+ * <p>
+ * A pack output stream writes a header based on the provided {@link PackConfig} (magic bytes, compression flag, and
+ * version number) and then exposes methods for writing various data types at the bit level. Data is written using the
+ * smallest possible number of bits, making the format compact.
+ * <p>
+ * When compression is enabled, the payload following the header is wrapped in a {@link GZIPOutputStream GZIP} stream.
+ * <p>
+ * The stream must be {@linkplain #close() closed} after use to ensure all buffered bits are flushed to the underlying
+ * output stream.
+ *
  * @author Jeroen Gremmen
  * @since 0.1.0
+ *
+ * @see PackInputStream
+ * @see PackConfig
  */
 public class PackOutputStream implements Closeable
 {
@@ -40,6 +54,13 @@ public class PackOutputStream implements Closeable
 
 
   /**
+   * Creates a new pack output stream with default configuration and the given compression setting.
+   *
+   * @param compress  {@code true} to enable GZIP compression for the payload
+   * @param stream    the underlying output stream to write to, not {@code null}
+   *
+   * @throws IOException  if an I/O error occurs while writing the header
+   *
    * @since 0.1.2
    */
   @Contract(mutates = "param2,io")
@@ -48,6 +69,17 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Creates a new pack output stream with the given configuration and version number. Compression is determined by
+   * the pack configuration.
+   *
+   * @param packConfig  pack configuration, not {@code null}
+   * @param version     the version number to write to the header
+   * @param stream      the underlying output stream to write to, not {@code null}
+   *
+   * @throws IOException               if an I/O error occurs while writing the header
+   * @throws IllegalArgumentException  if the version number is outside the configured range
+   */
   @Contract(mutates = "param3,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           @NotNull OutputStream stream) throws IOException {
@@ -55,12 +87,32 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Creates a new pack output stream with the given configuration, using the lowest configured version number and the
+   * configured compression setting.
+   *
+   * @param packConfig  pack configuration, not {@code null}
+   * @param stream      the underlying output stream to write to, not {@code null}
+   *
+   * @throws IOException  if an I/O error occurs while writing the header
+   */
   @Contract(mutates = "param2,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @NotNull OutputStream stream) throws IOException {
     this(packConfig, packConfig.getLowestVersionNumber(), packConfig.isCompressionSupport(), stream);
   }
 
 
+  /**
+   * Creates a new pack output stream with the given configuration and compression setting, using the lowest
+   * configured version number.
+   *
+   * @param packConfig  pack configuration, not {@code null}
+   * @param compress    {@code true} to enable GZIP compression for the payload
+   * @param stream      the underlying output stream to write to, not {@code null}
+   *
+   * @throws IOException               if an I/O error occurs while writing the header
+   * @throws IllegalArgumentException  if compression is requested but not supported by the configuration
+   */
   @Contract(mutates = "param3,io")
   public PackOutputStream(@NotNull PackConfig packConfig, boolean compress, @NotNull OutputStream stream)
       throws IOException {
@@ -68,6 +120,19 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Creates a new pack output stream with full control over configuration, version number, and compression.
+   *
+   * @param packConfig  pack configuration, not {@code null}
+   * @param version     the version number to write to the header
+   * @param compress    {@code true} to enable GZIP compression for the payload
+   * @param stream      the underlying output stream to write to, not {@code null}
+   *
+   * @throws IOException               if an I/O error occurs while writing the header
+   * @throws IllegalArgumentException  if compression is requested but not supported by the
+   *                                   configuration, or if the version number is outside the
+   *                                   configured range
+   */
   @Contract(mutates = "param4,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           boolean compress, @NotNull OutputStream stream) throws IOException
@@ -133,8 +198,8 @@ public class PackOutputStream implements Closeable
    * @param value     enumerated value to write, not {@code null}
    * @param bitWidth  number of bits to use for the enumerated value
    *
-   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16 or if the ordinal of
-   *                                   the enumerated value exceeds the {@code bitWidth}
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16 or if the ordinal of the
+   *                                   enumerated value exceeds the {@code bitWidth}
    * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
@@ -172,6 +237,8 @@ public class PackOutputStream implements Closeable
 
 
   /**
+   * Writes an unsigned 16-bit value to the output stream.
+   *
    * @param value  unsigned value (0..65535)
    *
    * @throws IOException  if an I/O error occurs
@@ -182,18 +249,40 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Writes a 32-bit integer value to the output stream.
+   *
+   * @param value  the integer value to write
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void writeInt(int value) throws IOException {
     writeLarge(value, 32);
   }
 
 
+  /**
+   * Writes a 64-bit long value to the output stream.
+   *
+   * @param value  the long value to write
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void writeLong(long value) throws IOException {
     writeLarge(value, 64);
   }
 
 
+  /**
+   * Writes a string value to the output stream using a compact modified UTF-8 encoding, or {@code null}.
+   *
+   * @param string  the string to write, or {@code null}
+   *
+   * @throws IllegalArgumentException  if the encoded string exceeds the maximum supported length
+   * @throws IOException               if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void writeString(String string) throws IOException
   {
@@ -256,7 +345,7 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Ranges: 0..7 (4 bit), 8..15 (5 bit), 16..255 (10 bit)
+   * Writes a small unsigned value (0..255) using a variable-width encoding that favors smaller values.
    *
    * @param value  unsigned value (0..255)
    *
@@ -275,10 +364,13 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * @param value     unsigned value (0..255)
-   * @param bitWidth  range 1..8 bits
+   * Writes a small unsigned value using exactly the specified number of bits (1..8).
    *
-   * @throws IOException  if an I/O error occurs
+   * @param value     unsigned value (0..255)
+   * @param bitWidth  number of bits to write (1..8)
+   *
+   * @throws IllegalArgumentException  if the value does not fit in the given bit width
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
   public void writeSmall(@Range(from = 0, to = 255) int value,
@@ -310,8 +402,10 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * @param value     signed value
-   * @param bitWidth  range 9..64 bits
+   * Writes a value using exactly the specified number of bits (9..64).
+   *
+   * @param value     the value to write
+   * @param bitWidth  number of bits to write (9..64)
    *
    * @throws IOException  if an I/O error occurs
    */
@@ -341,6 +435,12 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Flushes any partially written byte to the underlying stream, padding the remaining bits with zeros to reach
+   * byte alignment.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   protected void forceByteAlignment() throws IOException
   {
@@ -353,6 +453,11 @@ public class PackOutputStream implements Closeable
   }
 
 
+  /**
+   * Flushes any buffered bits, then flushes and closes the underlying output stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Override
   public void close() throws IOException
   {

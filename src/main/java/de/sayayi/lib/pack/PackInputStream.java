@@ -29,8 +29,19 @@ import static java.lang.Integer.bitCount;
 
 
 /**
+ * Input stream for reading data in the pack binary format.
+ * <p>
+ * A pack input stream reads and validates the header defined by the provided {@link PackConfig} (magic bytes,
+ * compression flag, and version number) and then exposes methods for reading various data types at the bit level.
+ * <p>
+ * When compression is detected in the header, the payload following the header is transparently decompressed using a
+ * {@link GZIPInputStream GZIP} stream.
+ *
  * @author Jeroen Gremmen
  * @since 0.1.0
+ *
+ * @see PackOutputStream
+ * @see PackConfig
  */
 public class PackInputStream implements Closeable
 {
@@ -42,6 +53,13 @@ public class PackInputStream implements Closeable
 
 
   /**
+   * Creates a new pack input stream with default configuration (compression support enabled, no magic bytes,
+   * no versioning).
+   *
+   * @param stream  the underlying input stream to read from, not {@code null}
+   *
+   * @throws IOException  if an I/O error occurs while reading the header
+   *
    * @since 0.1.2
    */
   @Contract(mutates = "param1,io")
@@ -50,6 +68,14 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Creates a new pack input stream with the given configuration. The header is read and validated immediately.
+   *
+   * @param packConfig  pack configuration defining the expected header format, not {@code null}
+   * @param stream      the underlying input stream to read from, not {@code null}
+   *
+   * @throws IOException  if an I/O error occurs while reading the header or if the magic bytes do not match
+   */
   @Contract(mutates = "param2,io")
   public PackInputStream(@NotNull PackConfig packConfig, @NotNull InputStream stream) throws IOException
   {
@@ -86,18 +112,35 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Tells whether the pack stream payload is compressed.
+   *
+   * @return  {@code true} if the payload is GZIP-compressed, {@code false} otherwise
+   */
   @Contract(pure = true)
   public boolean isCompressed() {
     return compressed;
   }
 
 
+  /**
+   * Returns the version number read from the pack stream header.
+   *
+   * @return  the version number, or empty if versioning is not configured
+   */
   @Contract(pure = true)
   public @NotNull OptionalInt getVersion() {
     return version == null ? OptionalInt.empty() : OptionalInt.of(version);
   }
 
 
+  /**
+   * Reads a single boolean value from the stream.
+   *
+   * @return  the boolean value read
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public boolean readBoolean() throws IOException
   {
@@ -107,6 +150,11 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Skips a single boolean value in the stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skipBoolean()  throws IOException
   {
@@ -115,6 +163,18 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Reads an enumerated value from the stream using the specified bit width.
+   *
+   * @param enumType  the enum class to read, not {@code null}
+   * @param bitWidth  number of bits used for the enumerated value (1..16)
+   * @param <T>       the enum type
+   *
+   * @return  the enum constant read, never {@code null}
+   *
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16
+   * @throws IOException               if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType,
                                                  @Range(from = 1, to = 16) int bitWidth) throws IOException
@@ -127,6 +187,17 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Reads an enumerated value from the stream. The bit width is automatically derived from the number of constants
+   * in the enum type.
+   *
+   * @param enumType  the enum class to read, not {@code null}
+   * @param <T>       the enum type
+   *
+   * @return  the enum constant read, never {@code null}
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType) throws IOException
   {
@@ -138,6 +209,15 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Skips an enumerated value in the stream. The bit width is automatically derived from the number of constants in
+   * the enum type.
+   *
+   * @param enumType  the enum class to skip, not {@code null}
+   * @param <T>       the enum type
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> void skipEnum(@NotNull Class<T> enumType) throws IOException
   {
@@ -149,6 +229,8 @@ public class PackInputStream implements Closeable
 
 
   /**
+   * Reads an unsigned 16-bit value from the stream.
+   *
    * @return  unsigned value (0..65535)
    *
    * @throws IOException  if an I/O error occurs
@@ -159,36 +241,73 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Skips an unsigned 16-bit value in the stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skipUnsignedShort() throws IOException {
     skip(16);
   }
 
 
+  /**
+   * Reads a 32-bit integer value from the stream.
+   *
+   * @return  the integer value read
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public int readInt() throws IOException {
     return (int)readLarge(32);
   }
 
 
+  /**
+   * Skips a 32-bit integer value in the stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skipInt() throws IOException {
     skip(32);
   }
 
 
+  /**
+   * Reads a 64-bit long value from the stream.
+   *
+   * @return  the long value read
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public long readLong() throws IOException {
     return readLarge(64);
   }
 
 
+  /**
+   * Skips a 64-bit long value in the stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skipLong() throws IOException {
     skip(64);
   }
 
 
+  /**
+   * Reads a string value from the stream using compact modified UTF-8 encoding.
+   *
+   * @return  the string read, or {@code null}
+   *
+   * @throws UTFDataFormatException  if the UTF-8 data is malformed
+   * @throws IOException             if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public String readString() throws IOException
   {
@@ -255,6 +374,11 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Skips a string value in the stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skipString() throws IOException
   {
@@ -287,7 +411,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Ranges: 0..7 (4 bit), 8..15 (5 bit), 16..255 (10 bit)
+   * Reads a small unsigned value (0..255) using a variable-width encoding that favors smaller values.
    *
    * @return  value in range 0..255
    *
@@ -307,6 +431,11 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Skips a variable-width encoded small value in the stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skipSmallVar() throws IOException
   {
@@ -318,7 +447,9 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * @param bitWidth  bit width (1..8)
+   * Reads a small unsigned value using exactly the specified number of bits (1..8).
+   *
+   * @param bitWidth  number of bits to read (1..8)
    *
    * @return  value in range 0..255
    *
@@ -356,9 +487,11 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * @param bitWidth  bit width (9..64)
+   * Reads a value using exactly the specified number of bits (9..64).
    *
-   * @return  long value
+   * @param bitWidth  number of bits to read (9..64)
+   *
+   * @return  the value read
    *
    * @throws IOException  if an I/O error occurs
    */
@@ -393,6 +526,12 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Ensures that a byte of data is available for bit-level reading. If the current byte has been fully consumed,
+   * the next byte is read from the underlying stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   protected void assertData() throws IOException
   {
@@ -404,6 +543,9 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Discards any remaining bits in the current byte to align the read position to the next byte boundary.
+   */
   @Contract(mutates = "this")
   protected void forceByteAlignment()
   {
@@ -412,6 +554,13 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Skips the specified number of bits in the stream.
+   *
+   * @param bitWidth  number of bits to skip
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Contract(mutates = "this,io")
   public void skip(@Range(from = 0, to = MAX_VALUE) int bitWidth) throws IOException
   {
@@ -433,12 +582,25 @@ public class PackInputStream implements Closeable
   }
 
 
+  /**
+   * Closes the underlying input stream.
+   *
+   * @throws IOException  if an I/O error occurs
+   */
   @Override
   public void close() throws IOException {
     stream.close();
   }
 
 
+  /**
+   * Reads a single byte from the underlying stream.
+   *
+   * @return  the byte read
+   *
+   * @throws EOFException  if the end of the stream is reached unexpectedly
+   * @throws IOException   if an I/O error occurs
+   */
   @Contract(mutates = "io")
   protected byte read() throws IOException
   {

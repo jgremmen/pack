@@ -32,10 +32,16 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 
 
 /**
- * Tika detector for packs.
+ * Abstract base class for detecting pack file content types using the {@link Detector Apache Tika detection API}.
+ * <p>
+ * Subclasses provide a specific {@link PackConfig} and base MIME type. This class handles detection by attempting to
+ * read the input as a pack stream and returning an annotated {@link MediaType} that may include version and
+ * compression parameters.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
+ *
+ * @see AbstractFileTypeDetector
  */
 public abstract class AbstractTikaDetector implements Detector
 {
@@ -43,6 +49,13 @@ public abstract class AbstractTikaDetector implements Detector
   protected final MediaType mimeType;
 
 
+  /**
+   * Creates a new Tika detector with the given pack configuration and base MIME type.
+   *
+   * @param packConfig  pack configuration used to read and validate the pack stream, not {@code null}
+   * @param mimeType    base MIME type to return when a pack file is detected (e.g.
+   *                    {@code "application/x-mypack"}), not {@code null}
+   */
   protected AbstractTikaDetector(@NotNull PackConfig packConfig, @NotNull String mimeType)
   {
     this.packConfig = packConfig;
@@ -50,6 +63,20 @@ public abstract class AbstractTikaDetector implements Detector
   }
 
 
+  /**
+   * Detects whether the given input stream contains a valid pack file.
+   * <p>
+   * If the input can be successfully read as a pack stream, an annotated {@link MediaType} is returned. Otherwise,
+   * {@link MediaType#OCTET_STREAM OCTET_STREAM} is returned as a fallback. The input stream is marked and reset so
+   * that it can be re-read by subsequent detectors.
+   *
+   * @param input     the input stream to probe, or {@code null}
+   * @param metadata  document metadata (unused)
+   *
+   * @return  the detected media type, never {@code null}
+   *
+   * @throws IOException  if an I/O error occurs while resetting the stream
+   */
   @Override
   public MediaType detect(InputStream input, Metadata metadata) throws IOException
   {
@@ -70,6 +97,15 @@ public abstract class AbstractTikaDetector implements Detector
   }
 
 
+  /**
+   * Builds an annotated {@link MediaType} from the base MIME type, optionally including {@code version} and
+   * {@code compress} parameters.
+   *
+   * @param version     the pack version, or empty if no version information is available
+   * @param compressed  {@code true} or {@code false} if compression status is known, or {@code null} if not applicable
+   *
+   * @return  the annotated media type, never {@code null}
+   */
   @Contract(pure = true)
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   protected @NotNull MediaType buildAnnotatedMimeType(@NotNull OptionalInt version, Boolean compressed)
