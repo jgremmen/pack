@@ -90,7 +90,7 @@ javadoc {
     linksOffline "https://javadoc.io/doc/org.apache.tika/tika-core/${resolvedTikaVersion}/",
                  'gradle/javadocs/tika-core'
 
-    encoding 'UTF-8'
+    encoding = 'UTF-8'
 
     noQualifiers 'java.util', 'java.lang'
 
