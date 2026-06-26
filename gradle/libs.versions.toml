@@ -3,8 +3,8 @@
 pack = '0.2.1-SNAPSHOT'
 
 jetbrains-annotations = '[19.0,26.2)'
-junit = '6.0.+'
-tika = '[1.19,3.3)'
+junit = '6.1.+'
+tika = '[1.19,3.4)'
 
 [libraries]
 jetbrains-annotations = { group = 'org.jetbrains', name = 'annotations', version.ref = 'jetbrains-annotations' }
