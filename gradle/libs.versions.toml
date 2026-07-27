@@ -1,6 +1,6 @@
 [versions]
 # pack version
-pack = '0.3.0-SNAPSHOT'
+pack = '0.3.0'
 
 jetbrains-annotations = '[19.0,26.2)'
 junit = '6.1.+'
