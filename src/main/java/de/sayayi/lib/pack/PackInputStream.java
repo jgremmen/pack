@@ -24,8 +24,8 @@ import java.util.Arrays;
 import java.util.OptionalInt;
 import java.util.zip.GZIPInputStream;
 
-import static java.lang.Integer.MAX_VALUE;
-import static java.lang.Integer.bitCount;
+import static java.lang.Integer.*;
+import static java.lang.Math.max;
 
 
 /**
@@ -188,8 +188,14 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Reads an enumerated value from the stream. The bit width is automatically derived from the number of constants
-   * in the enum type.
+   * Reads an enumerated value from the stream.
+   * <p>
+   * This method was named {@code readEnum} in versions prior to 0.3.0 but has been renamed because it does not
+   * calculate the bit width correctly. Use {@link #readEnum(Class)} instead, which correctly determines the minimum
+   * number of bits required.
+   * <p>
+   * This method is only provided for backward pack compatibility. For new implementations, use
+   * {@link #readEnum(Class)}.
    *
    * @param enumType  the enum class to read, not {@code null}
    * @param <T>       the enum type
@@ -197,9 +203,13 @@ public class PackInputStream implements Closeable
    * @return  the enum constant read, never {@code null}
    *
    * @throws IOException  if an I/O error occurs
+   *
+   * @deprecated Use {@link #readEnum(Class)} instead, which correctly calculates the bit width.
    */
+  @Deprecated(forRemoval = true, since = "0.3.0")
   @Contract(mutates = "this,io")
-  public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType) throws IOException
+  @SuppressWarnings("DeprecatedIsStillUsed")
+  public <T extends Enum<T>> @NotNull T readEnumOld(@NotNull Class<T> enumType) throws IOException
   {
     final var enums = enumType.getEnumConstants();
     final var n = enums.length;
@@ -210,21 +220,76 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Skips an enumerated value in the stream. The bit width is automatically derived from the number of constants in
-   * the enum type.
+   * Reads an enumerated value from the stream. The bit width is automatically derived from the number of constants
+   * in the enum type.
+   * <p>
+   * This method replaces the previous {@code readEnum(Class)} implementation (now available as
+   * {@link #readEnumOld(Class)}) which did not calculate the bit width correctly.
+   *
+   * @param enumType  the enum class to read, not {@code null}
+   * @param <T>       the enum type
+   *
+   * @return  the enum constant read, never {@code null}
+   *
+   * @throws IOException  if an I/O error occurs
+   *
+   * @since 0.3.0
+   */
+  @Contract(mutates = "this,io")
+  public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType) throws IOException
+  {
+    final var enums = enumType.getEnumConstants();
+    final var bits = max(SIZE - numberOfLeadingZeros(enums.length - 1), 1);
+
+    return enums[bits <= 8 ? readSmall(bits) : (int)readLarge(bits)];
+  }
+
+
+  /**
+   * Skips an enumerated value in the stream.
+   * <p>
+   * This method was named {@code skipEnum} in versions prior to 0.3.0 but has been renamed because it does not
+   * calculate the bit width correctly. Use {@link #skipEnum(Class)} instead, which correctly determines the minimum
+   * number of bits required.
+   * <p>
+   * This method is only provided for backward pack compatibility. For new implementations, use
+   * {@link #skipEnum(Class)}.
    *
    * @param enumType  the enum class to skip, not {@code null}
    * @param <T>       the enum type
    *
    * @throws IOException  if an I/O error occurs
+   *
+   * @deprecated Use {@link #skipEnum(Class)} instead, which correctly calculates the bit width.
    */
+  @Deprecated(forRemoval = true, since = "0.3.0")
   @Contract(mutates = "this,io")
-  public <T extends Enum<T>> void skipEnum(@NotNull Class<T> enumType) throws IOException
+  public <T extends Enum<T>> void skipEnumOld(@NotNull Class<T> enumType) throws IOException
   {
     final var enums = enumType.getEnumConstants();
     final var n = enums.length;
 
     skip(bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
+  }
+
+
+  /**
+   * Skips an enumerated value in the stream. The bit width is automatically derived from the number of constants in
+   * the enum type.
+   * <p>
+   * This method replaces the previous {@code skipEnum(Class)} implementation (now available as
+   * {@link #skipEnumOld(Class)}) which did not calculate the bit width correctly.
+   *
+   * @param enumType  the enum class to skip, not {@code null}
+   * @param <T>       the enum type
+   *
+   * @throws IOException  if an I/O error occurs
+   *
+   * @since 0.3.0
+   */
+  @Contract(mutates = "this,io")
+  public <T extends Enum<T>> void skipEnum(@NotNull Class<T> enumType) throws IOException {
+    skip(max(SIZE - numberOfLeadingZeros(enumType.getEnumConstants().length - 1), 1));
   }
 
 

@@ -238,6 +238,24 @@ class PackStreamTest
 
 
   @Test
+  @DisplayName("Pack/unpack enums (deprecated)")
+  @SuppressWarnings({"unchecked", "rawtypes", "removal"})
+  void packEnumOld() throws IOException
+  {
+    for(var enumClass: List.of(AA.class, BB.class, CC.class, DD.class, EE.class))
+    {
+      final var enumClass0 = (Class<? extends Enum>)enumClass;
+      final var enums = enumClass.getEnumConstants();
+
+      packUnpack(100000,
+          () -> enums[RANDOM.nextInt(enums.length)],
+          PackOutputStream::writeEnumOld,
+          packStream -> packStream.readEnumOld(enumClass0));
+    }
+  }
+
+
+  @Test
   @DisplayName("Pack/unpack strings")
   void packString() throws IOException
   {

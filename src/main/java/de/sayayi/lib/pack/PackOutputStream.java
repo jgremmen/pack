@@ -24,8 +24,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.GZIPOutputStream;
 
-import static java.lang.Integer.MAX_VALUE;
-import static java.lang.Integer.bitCount;
+import static java.lang.Integer.*;
+import static java.lang.Math.max;
+import static java.util.zip.Deflater.BEST_COMPRESSION;
 
 
 /**
@@ -222,17 +223,47 @@ public class PackOutputStream implements Closeable
 
   /**
    * Write an enumerated value to the output stream.
+   * <p>
+   * This method was named {@code writeEnum} in versions prior to 0.3.0 but has been renamed because it does not
+   * calculate the bit width correctly. Use {@link #writeEnum(Enum)} instead, which correctly determines the minimum
+   * number of bits required.
+   * <p>
+   * This method is only provided for backward pack compatibility. For new implementations, use
+   * {@link #writeEnum(Enum)}.
    *
    * @param value  enumerated value to write, not {@code null}
    *
    * @throws IOException  if an I/O error occurs
+   *
+   * @deprecated Use {@link #writeEnum(Enum)} instead, which correctly calculates the bit width.
    */
+  @Deprecated(forRemoval = true, since = "0.3.0")
   @Contract(mutates = "this,io")
-  public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException
+  @SuppressWarnings("DeprecatedIsStillUsed")
+  public <T extends Enum<T>> void writeEnumOld(@NotNull T value) throws IOException
   {
     var n = value.getClass().getEnumConstants().length;
 
     writeEnum(value, bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
+  }
+
+
+  /**
+   * Write an enumerated value to the output stream. The bit width is automatically derived from the number of
+   * constants in the enum type.
+   * <p>
+   * This method replaces the previous {@code writeEnum(Enum)} implementation (now available as
+   * {@link #writeEnumOld(Enum)}) which did not calculate the bit width correctly.
+   *
+   * @param value  enumerated value to write, not {@code null}
+   *
+   * @throws IOException  if an I/O error occurs
+   *
+   * @since 0.3.0
+   */
+  @Contract(mutates = "this,io")
+  public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException {
+    writeEnum(value, max(SIZE - numberOfLeadingZeros(value.getClass().getEnumConstants().length - 1), 1));
   }
 
 
