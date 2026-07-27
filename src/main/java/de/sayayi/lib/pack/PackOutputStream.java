@@ -166,7 +166,9 @@ public class PackOutputStream implements Closeable
       forceByteAlignment();
       stream.flush();
 
-      this.stream = new GZIPOutputStream(stream);
+      this.stream = new GZIPOutputStream(stream, 1024) {{
+        def.setLevel(BEST_COMPRESSION);
+      }};
     }
   }
 
