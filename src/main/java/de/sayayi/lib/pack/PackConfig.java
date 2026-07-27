@@ -42,9 +42,36 @@ import static java.util.Objects.requireNonNull;
  */
 public class PackConfig
 {
+  /**
+   * Magic bytes used to identify the pack format in the stream header.
+   * <p>
+   * These bytes are written at the beginning of the pack stream and verified during reading to ensure the stream
+   * matches the expected format.
+   */
   protected final byte[] magic;
+
+  /**
+   * The lowest version number in the supported range.
+   * <p>
+   * Together with {@link #versionBits}, this defines the full range of version numbers that can be encoded in the
+   * pack stream header. The highest version is {@code lowestVersionNumber + (2^versionBits - 1)}.
+   */
   protected final int lowestVersionNumber;
+
+  /**
+   * Number of bits used to encode the version number in the pack stream header.
+   * <p>
+   * A value of {@code 0} indicates that versioning is disabled. Otherwise, the version field can represent
+   * {@code 2^versionBits} distinct version numbers starting from {@link #lowestVersionNumber}.
+   */
   protected final int versionBits;
+
+  /**
+   * Whether this pack format supports compression.
+   * <p>
+   * When {@code true}, a compression flag is included in the stream header to indicate whether the payload
+   * is compressed.
+   */
   protected final boolean compressionSupport;
 
 

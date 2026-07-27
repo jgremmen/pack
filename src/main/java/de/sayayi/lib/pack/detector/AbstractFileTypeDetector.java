@@ -35,6 +35,32 @@ import static java.nio.file.Files.newInputStream;
  * to read them as pack streams and returning an annotated MIME type that may include version and compression
  * parameters.
  *
+ * <h2>Usage Example</h2>
+ * Create a concrete subclass that supplies your pack configuration and MIME type:
+ * <pre>{@code
+ * public class MyPackDetector extends AbstractFileTypeDetector
+ * {
+ *   private static final PackConfig MY_PACK_CONFIG = new PackConfig.Builder()
+ *       .withMagic("MYPK")
+ *       .withVersionRange(1, 5)
+ *       .withCompressionSupport()
+ *       .build();
+ *
+ *   public MyPackDetector() {
+ *     super(MY_PACK_CONFIG, "application/x-mypack");
+ *   }
+ * }
+ * }</pre>
+ *
+ * Register the detector as a service provider by creating a file
+ * {@code META-INF/services/java.nio.file.spi.FileTypeDetector} containing the fully qualified class name:
+ * <pre>
+ * com.example.MyPackDetector
+ * </pre>
+ *
+ * Once registered, {@link java.nio.file.Files#probeContentType(Path)} will automatically use your detector and return
+ * an annotated MIME type such as {@code application/x-mypack;version=3;compress=true}.
+ *
  * @author Jeroen Gremmen
  * @since 0.1.0
  *
@@ -42,8 +68,11 @@ import static java.nio.file.Files.newInputStream;
  */
 public abstract class AbstractFileTypeDetector extends FileTypeDetector
 {
-  private final PackConfig packConfig;
-  private final String mimeType;
+  /** Pack configuration used to read and validate pack stream headers. */
+  protected final PackConfig packConfig;
+
+  /** Base MIME type returned when a pack file is successfully detected. */
+  protected final String mimeType;
 
 
   /**

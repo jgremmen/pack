@@ -38,6 +38,32 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
  * read the input as a pack stream and returning an annotated {@link MediaType} that may include version and
  * compression parameters.
  *
+ * <h2>Usage Example</h2>
+ * Create a concrete subclass that supplies your pack configuration and MIME type:
+ * <pre>{@code
+ * public class MyPackTikaDetector extends AbstractTikaDetector
+ * {
+ *   private static final PackConfig MY_PACK_CONFIG = new PackConfig.Builder()
+ *       .withMagic("MYPK")
+ *       .withVersionRange(1, 5)
+ *       .withCompressionSupport()
+ *       .build();
+ *
+ *   public MyPackTikaDetector() {
+ *     super(MY_PACK_CONFIG, "application/x-mypack");
+ *   }
+ * }
+ * }</pre>
+ *
+ * Register the detector as a service provider by creating a file
+ * {@code META-INF/services/org.apache.tika.detect.Detector} containing the fully qualified class name:
+ * <pre>
+ * com.example.MyPackTikaDetector
+ * </pre>
+ *
+ * Once registered, Tika's detection framework will automatically use your detector and return an annotated
+ * {@link MediaType} such as {@code application/x-mypack;version=3;compress=true}.
+ *
  * @author Jeroen Gremmen
  * @since 0.1.0
  *
@@ -45,7 +71,10 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
  */
 public abstract class AbstractTikaDetector implements Detector
 {
+  /** Pack configuration used to read and validate pack stream headers. */
   protected final PackConfig packConfig;
+
+  /** Base MIME type returned when a pack file is successfully detected. */
   protected final MediaType mimeType;
 
 
