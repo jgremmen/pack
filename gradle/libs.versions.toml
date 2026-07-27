@@ -4,7 +4,7 @@ pack = '0.3.0-SNAPSHOT'
 
 jetbrains-annotations = '[19.0,26.2)'
 junit = '6.1.+'
-tika = '[1.19,3.4)'
+tika = '[1.19,3.4)'  # module support started at version 1.19
 
 [libraries]
 jetbrains-annotations = { group = 'org.jetbrains', name = 'annotations', version.ref = 'jetbrains-annotations' }
