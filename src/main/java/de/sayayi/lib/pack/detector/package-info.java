@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * Provides abstract base classes for detecting pack file content types.
  * <p>
@@ -20,11 +21,11 @@
  * the pack stream header. Two detection strategies are supported:
  * <ul>
  *   <li>
- *     {@link de.sayayi.lib.pack.detector.AbstractFileTypeDetector} &ndash; for the
+ *     {@link de.sayayi.lib.pack.detector.AbstractFileTypeDetector} - for the
  *     {@linkplain java.nio.file.spi.FileTypeDetector Java NIO file type detection SPI}
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.detector.AbstractTikaDetector} &ndash; for the Apache Tika detection API
+ *     {@link de.sayayi.lib.pack.detector.AbstractTikaDetector} - for the Apache Tika detection API
  *   </li>
  * </ul>
  */

@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * Provides classes for reading and writing data in a compact bit-level binary format.
  * <p>
  * The core classes in this package are:
  * <ul>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackConfig} &ndash; defines the structure of a pack stream header,
- *     including magic bytes, version range, and compression support
+ *     {@link de.sayayi.lib.pack.PackConfig} - defines the structure of a pack stream header, including magic bytes,
+ *     version range, and compression support
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackOutputStream} &ndash; writes data to a pack stream
+ *     {@link de.sayayi.lib.pack.PackOutputStream} - writes data to a pack stream
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackInputStream} &ndash; reads data from a pack stream
+ *     {@link de.sayayi.lib.pack.PackInputStream} - reads data from a pack stream
  *   </li>
  * </ul>
  */
