@@ -25,8 +25,18 @@
  *     {@linkplain java.nio.file.spi.FileTypeDetector Java NIO file type detection SPI}
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.detector.AbstractTikaDetector} - for the Apache Tika detection API
+ *     {@code AbstractTika3Detector} - for the Apache Tika detection API, compiled against and intended to be used
+ *     with Apache Tika 3
+ *   </li>
+ *   <li>
+ *     {@code AbstractTika4Detector} - for the Apache Tika detection API, compiled against and intended to be used
+ *     with Apache Tika 4
  *   </li>
  * </ul>
+ * <p>
+ * The Apache Tika detector base classes are not part of this module's main compilation; each is compiled separately
+ * against its respective Tika version (Tika 3 or Tika 4) and packaged into this same package. Depending on which
+ * version of Apache Tika is available on the classpath at compile and runtime, only the matching class can be
+ * referenced and used.
  */
 package de.sayayi.lib.pack.detector;

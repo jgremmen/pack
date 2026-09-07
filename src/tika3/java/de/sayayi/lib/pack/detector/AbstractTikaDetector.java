@@ -34,6 +34,10 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 /**
  * Abstract base class for detecting pack file content types using the {@link Detector Apache Tika detection API}.
  * <p>
+ * This class is compiled against and intended to be used with Apache Tika 3. A separate, source-compatible but
+ * binary-incompatible class named {@code AbstractTika4Detector} (same package, different artifact/classpath) is
+ * provided for use with Apache Tika 4.
+ * <p>
  * Subclasses provide a specific {@link PackConfig} and base MIME type. This class handles detection by attempting to
  * read the input as a pack stream and returning an annotated {@link MediaType} that may include version and
  * compression parameters.
@@ -69,6 +73,7 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
  *
  * @see AbstractFileTypeDetector
  */
+@Deprecated(since = "0.3.1")
 public abstract class AbstractTikaDetector implements Detector
 {
   /** Pack configuration used to read and validate pack stream headers. */
@@ -107,7 +112,7 @@ public abstract class AbstractTikaDetector implements Detector
    * @throws IOException  if an I/O error occurs while resetting the stream
    */
   @Override
-  public MediaType detect(InputStream input, Metadata metadata) throws IOException
+  public @NotNull MediaType detect(InputStream input, Metadata metadata) throws IOException
   {
     if (input != null)
     {

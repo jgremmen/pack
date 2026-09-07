@@ -95,7 +95,7 @@ class TikaDetectorTest
 
 
 
-  private static final class MyTikaDetector extends AbstractTikaDetector
+  private static final class MyTikaDetector extends AbstractTika3Detector
   {
     public MyTikaDetector() {
       super(PACK_CONFIG, "application/my-bitpack");

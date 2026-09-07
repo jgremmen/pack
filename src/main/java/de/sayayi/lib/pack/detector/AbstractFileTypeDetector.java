@@ -63,8 +63,6 @@ import static java.nio.file.Files.newInputStream;
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
- *
- * @see AbstractTikaDetector
  */
 public abstract class AbstractFileTypeDetector extends FileTypeDetector
 {

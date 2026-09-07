@@ -38,6 +38,58 @@ test {
 }
 
 
+
+sourceSets {
+  // additional source set providing classes compiled against Apache Tika 3
+  tika3
+  tika3Test {
+    compileClasspath += sourceSets.main.output + sourceSets.tika3.output
+    runtimeClasspath += sourceSets.main.output + sourceSets.tika3.output
+  }
+
+  // additional source set providing classes compiled against Apache Tika 4
+  tika4
+  tika4Test {
+    compileClasspath += sourceSets.main.output + sourceSets.tika4.output
+    runtimeClasspath += sourceSets.main.output + sourceSets.tika4.output
+  }
+}
+
+
+tasks.register('tika3Test', Test) {
+  description = 'Runs unit tests for classes compiled against Apache Tika 3.'
+  group = 'verification'
+
+  testClassesDirs = sourceSets.tika3Test.output.classesDirs
+  classpath = sourceSets.tika3Test.runtimeClasspath
+
+  useJUnitPlatform()
+
+  javaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+
+tasks.register('tika4Test', Test) {
+  description = 'Runs unit tests for classes compiled against Apache Tika 4.'
+  group = 'verification'
+
+  testClassesDirs = sourceSets.tika4Test.output.classesDirs
+  classpath = sourceSets.tika4Test.runtimeClasspath
+
+  useJUnitPlatform()
+
+  javaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+
+check.dependsOn tika3Test
+check.dependsOn tika4Test
+
+
 testlogger {
   theme = 'mocha'
   slowThreshold = 2500
@@ -53,9 +105,19 @@ dependencies {
   // java
   compileOnlyApi libs.jetbrains.annotations
 
-  optionalApi(libs.tika.core) {
-    transitive = false
-  }
+  // tika-core is required (optionally, at compile time only) by the module descriptor (module-info.java), since the
+  // Tika detector classes compiled in the tika3/tika4 source sets are packaged into this very module. Published as
+  // an optional dependency using a joint version range spanning both Apache Tika 3 and 4, since consumers may bring
+  // either version depending on which detector class (AbstractTikaDetector or AbstractTika4Detector) they use.
+  optionalApi(libs.tika.core.full)
+
+  tika3CompileOnly sourceSets.main.output
+  tika3CompileOnly libs.jetbrains.annotations
+  tika3CompileOnly libs.tika.core
+
+  tika4CompileOnly sourceSets.main.output
+  tika4CompileOnly libs.jetbrains.annotations
+  tika4CompileOnly libs.tika4.core
 
   // test
   testImplementation libs.junit.jupiter.api
@@ -64,6 +126,18 @@ dependencies {
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
   testImplementation libs.tika.core
+
+  tika3TestImplementation libs.junit.jupiter.api
+  tika3TestImplementation libs.junit.jupiter.params
+  tika3TestImplementation libs.tika.core
+  tika3TestRuntimeOnly libs.junit.jupiter.engine
+  tika3TestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+  tika4TestImplementation libs.junit.jupiter.api
+  tika4TestImplementation libs.junit.jupiter.params
+  tika4TestImplementation libs.tika4.core
+  tika4TestRuntimeOnly libs.junit.jupiter.engine
+  tika4TestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 
@@ -73,8 +147,14 @@ def resolvedJetbrainsAnnotationsVersion = configurations
     .resolvedArtifacts
     .find { it.name == 'annotations' }
     .moduleVersion.id.version
-def resolvedTikaVersion = configurations
-    .compileClasspath
+def resolvedTika3Version = configurations
+    .tika3CompileClasspath
+    .resolvedConfiguration
+    .resolvedArtifacts
+    .find { it.name == 'tika-core' }
+    .moduleVersion.id.version
+def resolvedTika4Version = configurations
+    .tika4CompileClasspath
     .resolvedConfiguration
     .resolvedArtifacts
     .find { it.name == 'tika-core' }
@@ -82,13 +162,21 @@ def resolvedTikaVersion = configurations
 
 
 javadoc {
+  source += sourceSets.tika3.allJava
+  source += sourceSets.tika4.allJava
+
+  classpath += sourceSets.tika3.compileClasspath
+  classpath += sourceSets.tika4.compileClasspath
+
   title = "Java Pack Library ${version}"
 
   (options as StandardJavadocDocletOptions).with {
     linksOffline "https://javadoc.io/doc/org.jetbrains/annotations/${resolvedJetbrainsAnnotationsVersion}/",
                  'gradle/javadocs/jetbrains-annotations'
-    linksOffline "https://javadoc.io/doc/org.apache.tika/tika-core/${resolvedTikaVersion}/",
-                 'gradle/javadocs/tika-core'
+    linksOffline "https://javadoc.io/doc/org.apache.tika/tika-core/${resolvedTika3Version}/",
+                 'gradle/javadocs/tika3-core'
+    linksOffline "https://javadoc.io/doc/org.apache.tika/tika-core/${resolvedTika4Version}/",
+                 'gradle/javadocs/tika4-core'
 
     encoding = 'UTF-8'
 
@@ -121,7 +209,20 @@ tasks.withType(Jar).configureEach {
 }
 
 
-jar.dependsOn test
+jar {
+  dependsOn test
+  dependsOn tika3Test
+  dependsOn tika4Test
+
+  from sourceSets.tika3.output
+  from sourceSets.tika4.output
+}
+
+
+tasks.named('sourcesJar') {
+  from sourceSets.tika3.allJava
+  from sourceSets.tika4.allJava
+}
 
 
 apply from: file('gradle/publish.gradle')
