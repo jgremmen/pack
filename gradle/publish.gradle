@@ -23,7 +23,9 @@ publishOnCentral {
   repoOwner = 'jgremmen'
 
   projectLongName = 'Java Pack Library'
-  projectDescription = 'Java Pack Library'
+  projectDescription =
+      'A lightweight Java library for reading and writing data in a compact, bit-level binary format, with ' +
+      'configurable headers, optional compression, and variable-width encoding'
 
   licenseName = 'Apache License, Version 2.0'
   licenseUrl = 'https://www.apache.org/licenses/LICENSE-2.0'
