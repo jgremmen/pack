@@ -109,7 +109,7 @@ dependencies {
   // Tika detector classes compiled in the tika3/tika4 source sets are packaged into this very module. Published as
   // an optional dependency using a joint version range spanning both Apache Tika 3 and 4, since consumers may bring
   // either version depending on which detector class (AbstractTikaDetector or AbstractTika4Detector) they use.
-  optionalApi(libs.tika.core.full)
+  optionalApi libs.tika.core.full
 
   tika3CompileOnly sourceSets.main.output
   tika3CompileOnly libs.jetbrains.annotations
