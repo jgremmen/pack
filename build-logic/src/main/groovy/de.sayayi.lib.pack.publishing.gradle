@@ -15,8 +15,11 @@
  */
 
 
-// do not reference by id in build.gradle because it will not respect the build directory setting
-apply plugin: 'org.danilopianini.publish-on-central'
+// applied with this convention plugin, which build.gradle applies after the build directory has been set, as the
+// publish-on-central plugin does not respect a build directory changed after it has been applied
+plugins {
+  id 'org.danilopianini.publish-on-central'
+}
 
 
 publishOnCentral {

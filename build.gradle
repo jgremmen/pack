@@ -1,6 +1,8 @@
 plugins {
   id 'java-library'
-  id 'com.adarshr.test-logger' version '4.0.0'
+  id 'de.sayayi.lib.pack.publishing' apply false
+
+  alias(libs.plugins.test.logger)
 }
 
 
@@ -29,12 +31,8 @@ java {
 }
 
 
-test {
+tasks.withType(Test).configureEach {
   useJUnitPlatform()
-
-  javaLauncher = javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(21)
-  }
 }
 
 
@@ -62,12 +60,6 @@ tasks.register('tika3Test', Test) {
 
   testClassesDirs = sourceSets.tika3Test.output.classesDirs
   classpath = sourceSets.tika3Test.runtimeClasspath
-
-  useJUnitPlatform()
-
-  javaLauncher = javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(21)
-  }
 }
 
 
@@ -77,17 +69,13 @@ tasks.register('tika4Test', Test) {
 
   testClassesDirs = sourceSets.tika4Test.output.classesDirs
   classpath = sourceSets.tika4Test.runtimeClasspath
-
-  useJUnitPlatform()
-
-  javaLauncher = javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(21)
-  }
 }
 
 
-check.dependsOn tika3Test
-check.dependsOn tika4Test
+tasks.named('check') {
+  dependsOn tasks.named('tika3Test')
+  dependsOn tasks.named('tika4Test')
+}
 
 
 testlogger {
@@ -120,26 +108,28 @@ dependencies {
   tika4CompileOnly libs.tika4.core
 
   // test
+  testImplementation platform(libs.junit.bom)
   testImplementation libs.junit.jupiter.api
   testImplementation libs.junit.jupiter.params
-  testRuntimeOnly libs.junit.jupiter.engine
-  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
   testImplementation libs.tika.core
+  testRuntimeOnly libs.junit.jupiter.engine
+  testRuntimeOnly libs.junit.platform.launcher
 
   tika3TestCompileOnly libs.jetbrains.annotations
+  tika3TestImplementation platform(libs.junit.bom)
   tika3TestImplementation libs.junit.jupiter.api
   tika3TestImplementation libs.junit.jupiter.params
   tika3TestImplementation libs.tika.core
   tika3TestRuntimeOnly libs.junit.jupiter.engine
-  tika3TestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  tika3TestRuntimeOnly libs.junit.platform.launcher
 
   tika4TestCompileOnly libs.jetbrains.annotations
+  tika4TestImplementation platform(libs.junit.bom)
   tika4TestImplementation libs.junit.jupiter.api
   tika4TestImplementation libs.junit.jupiter.params
   tika4TestImplementation libs.tika4.core
   tika4TestRuntimeOnly libs.junit.jupiter.engine
-  tika4TestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  tika4TestRuntimeOnly libs.junit.platform.launcher
 }
 
 
@@ -163,7 +153,7 @@ def resolvedTika4Version = configurations
     .moduleVersion.id.version
 
 
-javadoc {
+tasks.named('javadoc', Javadoc) {
   source += sourceSets.tika3.allJava
   source += sourceSets.tika4.allJava
 
@@ -192,8 +182,6 @@ javadoc {
 
 
 tasks.withType(Jar).configureEach {
-  reproducibleFileOrder = true
-
   manifest {
     attributes(
         'Implementation-Vendor': 'Jeroen Gremmen',
@@ -210,30 +198,20 @@ tasks.withType(Jar).configureEach {
 }
 
 
-jar {
-  dependsOn test
-  dependsOn tika3Test
-  dependsOn tika4Test
+tasks.named('jar', Jar) {
+  dependsOn tasks.named('test')
+  dependsOn tasks.named('tika3Test')
+  dependsOn tasks.named('tika4Test')
 
   from sourceSets.tika3.output
   from sourceSets.tika4.output
 }
 
 
-tasks.named('sourcesJar') {
+tasks.named('sourcesJar', Jar) {
   from sourceSets.tika3.allJava
   from sourceSets.tika4.allJava
 }
 
 
-apply from: file('gradle/publish.gradle')
-
-
-clean {
-  delete layout.projectDirectory.dir('build')
-}
-
-
-wrapper {
-  distributionType = Wrapper.DistributionType.BIN
-}
+apply plugin: 'de.sayayi.lib.pack.publishing'

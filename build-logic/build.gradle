@@ -1,0 +1,16 @@
+plugins {
+  id 'groovy-gradle-plugin'
+}
+
+
+layout.buildDirectory = '.build'
+
+
+repositories {
+  gradlePluginPortal()
+}
+
+
+dependencies {
+  implementation libs.publish.on.central.plugin
+}
