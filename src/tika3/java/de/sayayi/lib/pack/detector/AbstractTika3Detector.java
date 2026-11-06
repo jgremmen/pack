@@ -72,7 +72,7 @@ import org.jetbrains.annotations.NotNull;
  *
  * @see AbstractFileTypeDetector
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings("removal")
 public abstract class AbstractTika3Detector extends AbstractTikaDetector
 {
   /**
