@@ -24,6 +24,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UTFDataFormatException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -284,6 +285,91 @@ class PackStreamTest
         () -> enums[RANDOM.nextInt(enums.length)],
         PackOutputStream::writeEnumOld,
         packStream -> packStream.readEnumOld(FF.class));
+  }
+
+
+  @Test
+  @DisplayName("Unpack enum with invalid ordinal")
+  @SuppressWarnings({"removal", "resource"})
+  void unpackEnumInvalidOrdinal()
+  {
+    // RetentionPolicy has 3 constants -> 2 bits; 0b11 = ordinal 3
+    assertTrue(assertThrows(
+        IOException.class,
+        () -> unpack(0b1100_0000).readEnum(RetentionPolicy.class))
+        .getMessage()
+        .startsWith("invalid ordinal 3"));
+    assertTrue(assertThrows(
+        IOException.class,
+        () -> unpack(0b1100_0000).readEnum(RetentionPolicy.class, 2))
+        .getMessage()
+        .startsWith("invalid ordinal 3"));
+    assertTrue(assertThrows(
+        IOException.class,
+        () -> unpack(0b1100_0000).readEnumOld(RetentionPolicy.class))
+        .getMessage()
+        .startsWith("invalid ordinal 3"));
+  }
+
+
+  @Test
+  @DisplayName("Unpack string with multi-byte sequence exceeding declared length")
+  @SuppressWarnings("resource")
+  void unpackStringSequenceExceedsLength() throws IOException
+  {
+    // 0b01_0001_00: string of 1 byte, followed by a 3-byte sequence (U+20AC)
+    final var packStream = unpack(0b0100_0100, 0xe2, 0x82, 0xac);
+
+    assertThrows(UTFDataFormatException.class, packStream::readString);
+
+    // no bytes beyond the declared string length must have been consumed
+    assertEquals(0x82, packStream.readSmall(8));
+
+    // 0b01_0001_00: string of 1 byte, followed by a 2-byte sequence (U+00E4)
+    assertThrows(
+        UTFDataFormatException.class,
+        () -> unpack(0b0100_0100, 0xc3, 0xa4).readString());
+
+    // 0b01_0010_00: string of 2 bytes, followed by a 3-byte sequence (U+20AC)
+    assertThrows(
+        UTFDataFormatException.class,
+        () -> unpack(0b0100_1000, 0xe2, 0x82, 0xac).readString());
+  }
+
+
+  @Test
+  @DisplayName("Unpack string with malformed sequence")
+  @SuppressWarnings("resource")
+  void unpackStringMalformed()
+  {
+    // 0b01_0001_00: string of 1 byte, invalid lead byte
+    assertEquals("invalid lead byte 0x80", assertThrows(
+        UTFDataFormatException.class,
+        () -> unpack(0b0100_0100, 0x80).readString())
+        .getMessage());
+
+    // 0b01_0010_00: string of 2 bytes, invalid continuation byte
+    assertEquals("malformed 2-byte sequence", assertThrows(
+        UTFDataFormatException.class,
+        () -> unpack(0b0100_1000, 0xc3, 0x41).readString())
+        .getMessage());
+
+    // 0b01_0011_00: string of 3 bytes, invalid continuation byte
+    assertEquals("malformed 3-byte sequence", assertThrows(
+        UTFDataFormatException.class,
+        () -> unpack(0b0100_1100, 0xe2, 0x82, 0x41).readString())
+        .getMessage());
+  }
+
+
+  private static @NotNull PackInputStream unpack(int... bytes) throws IOException
+  {
+    final var data = new byte[bytes.length];
+
+    for(var n = 0; n < bytes.length; n++)
+      data[n] = (byte)bytes[n];
+
+    return new PackInputStream(new PackConfig.Builder().build(), new ByteArrayInputStream(data));
   }
 
 

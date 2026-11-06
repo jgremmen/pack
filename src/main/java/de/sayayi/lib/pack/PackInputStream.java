@@ -173,7 +173,7 @@ public class PackInputStream implements Closeable
    * @return  the enum constant read, never {@code null}
    *
    * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16
-   * @throws IOException               if an I/O error occurs
+   * @throws IOException               if an I/O error occurs or if the ordinal read is not valid for the enum type
    */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType,
@@ -183,7 +183,8 @@ public class PackInputStream implements Closeable
     if (bitWidth <= 0 || bitWidth > 16)
       throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
 
-    return enumType.getEnumConstants()[bitWidth <= 8 ? readSmall(bitWidth) : (int)readLarge(bitWidth)];
+    return toEnum(enumType, enumType.getEnumConstants(),
+        bitWidth <= 8 ? readSmall(bitWidth) : (int)readLarge(bitWidth));
   }
 
 
@@ -202,7 +203,7 @@ public class PackInputStream implements Closeable
    *
    * @return  the enum constant read, never {@code null}
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IOException  if an I/O error occurs or if the ordinal read is not valid for the enum type
    *
    * @deprecated Use {@link #readEnum(Class)} instead, which correctly calculates the bit width.
    */
@@ -215,7 +216,7 @@ public class PackInputStream implements Closeable
     final var n = enums.length;
     final var bits = bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8));
 
-    return enums[bits <= 8 ? readSmall(bits) : (int)readLarge(bits)];
+    return toEnum(enumType, enums, bits <= 8 ? readSmall(bits) : (int)readLarge(bits));
   }
 
 
@@ -231,7 +232,7 @@ public class PackInputStream implements Closeable
    *
    * @return  the enum constant read, never {@code null}
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IOException  if an I/O error occurs or if the ordinal read is not valid for the enum type
    *
    * @since 0.3.0
    */
@@ -241,7 +242,30 @@ public class PackInputStream implements Closeable
     final var enums = enumType.getEnumConstants();
     final var bits = max(SIZE - numberOfLeadingZeros(enums.length - 1), 1);
 
-    return enums[bits <= 8 ? readSmall(bits) : (int)readLarge(bits)];
+    return toEnum(enumType, enums, bits <= 8 ? readSmall(bits) : (int)readLarge(bits));
+  }
+
+
+  /**
+   * Returns the enum constant for the given ordinal, which has been read from the stream.
+   *
+   * @param enumType  the enum class, not {@code null}
+   * @param enums     the constants of {@code enumType}, not {@code null}
+   * @param ordinal   the ordinal read from the stream
+   * @param <T>       the enum type
+   *
+   * @return  the enum constant, never {@code null}
+   *
+   * @throws IOException  if the ordinal is not valid for the enum type
+   */
+  @Contract(pure = true)
+  private static <T extends Enum<T>> @NotNull T toEnum(@NotNull Class<T> enumType, @NotNull T[] enums, int ordinal)
+      throws IOException
+  {
+    if (ordinal >= enums.length)
+      throw new IOException("invalid ordinal " + ordinal + " for enum " + enumType.getName());
+
+    return enums[ordinal];
   }
 
 
@@ -411,28 +435,34 @@ public class PackInputStream implements Closeable
       }
       else if ((b1 & 0b1110_0000) == 0b1100_0000)  // 110x xxxx | 10xx xxxx
       {
-        utfBytesRemaining -= 2;
+        // check before reading, so no bytes beyond the declared string length are consumed
+        if ((utfBytesRemaining -= 2) < 0)
+          throw new UTFDataFormatException("2-byte sequence exceeds declared string length");
+
         b2 = read();
 
         if ((b2 & 0b1100_0000) != 0b1000_0000)
-          throw new UTFDataFormatException();
+          throw new UTFDataFormatException("malformed 2-byte sequence");
 
         chars[charIdx++] = (char)(((b1 & 0b0001_1111) << 6) | (b2 & 0b0011_1111));
       }
       else if ((b1 & 0b11110000) == 0b11100000)  // 1110 xxxx | 10xx xxxx | 10xx xxxx
       {
-        utfBytesRemaining -= 3;
+        // check before reading, so no bytes beyond the declared string length are consumed
+        if ((utfBytesRemaining -= 3) < 0)
+          throw new UTFDataFormatException("3-byte sequence exceeds declared string length");
+
         b2 = read();
         b3 = read();
 
         if ((b2 & 0b1100_0000) != 0b1000_0000 ||
             (b3 & 0b1100_0000) != 0b1000_0000)
-          throw new UTFDataFormatException();
+          throw new UTFDataFormatException("malformed 3-byte sequence");
 
         chars[charIdx++] = (char)(((b1 & 0b0000_1111) << 12) | ((b2 & 0b0011_1111) << 6) | (b3 & 0b0011_1111));
       }
       else  // 10xx xxxx, 1111 xxxx
-        throw new UTFDataFormatException();
+        throw new UTFDataFormatException(String.format("invalid lead byte 0x%02x", b1 & 0xff));
     }
 
     return new String(chars, 0, charIdx);
