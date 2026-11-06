@@ -185,7 +185,7 @@ javadoc {
     addStringOption('Xdoclint:-missing', '-quiet')
   }
 
-  failOnError = false
+  failOnError = true
 }
 
 
