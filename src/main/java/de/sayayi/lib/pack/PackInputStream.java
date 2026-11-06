@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Range;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.OptionalInt;
 import java.util.zip.GZIPInputStream;
 
@@ -105,8 +106,21 @@ public class PackInputStream implements Closeable
     if (magicLength != 0)
     {
       final var header = new byte[magicLength];
-      if (stream.readNBytes(header, 0, magicLength) != magicLength || !Arrays.equals(header, magic))
-        throw new IOException("pack stream has wrong header magic");
+      final var headerLength = stream.readNBytes(header, 0, magicLength);
+      final var hexFormat = HexFormat.of();
+
+      if (headerLength != magicLength)
+      {
+        throw new EOFException("pack stream too short for header magic: expected " + magicLength + " bytes 0x" +
+            hexFormat.formatHex(magic) + ", found " + headerLength + " bytes" +
+            (headerLength == 0 ? "" : " 0x" + hexFormat.formatHex(header, 0, headerLength)));
+      }
+
+      if (!Arrays.equals(header, magic))
+      {
+        throw new IOException("pack stream has wrong header magic: expected 0x" + hexFormat.formatHex(magic) +
+            ", found 0x" + hexFormat.formatHex(header));
+      }
     }
 
     compressed = packConfig.isCompressionSupport() && readBoolean();
@@ -174,7 +188,7 @@ public class PackInputStream implements Closeable
    * @throws IOException  if an I/O error occurs
    */
   @Contract(mutates = "this,io")
-  public void skipBoolean()  throws IOException
+  public void skipBoolean() throws IOException
   {
     assertData();
     bit--;

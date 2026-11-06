@@ -23,6 +23,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 import java.lang.annotation.ElementType;
@@ -440,6 +441,30 @@ class PackStreamTest
     assertThrows(
         IllegalArgumentException.class,
         () -> unpack(0xff, 0xff).skip(-1));
+  }
+
+
+  @Test
+  @DisplayName("Unpack with wrong or truncated header magic")
+  void unpackWrongMagic()
+  {
+    final var config = new PackConfig.Builder().withMagic("PK").build();
+
+    assertEquals("pack stream has wrong header magic: expected 0x504b, found 0x504c",
+        assertThrows(
+            IOException.class,
+            () -> new PackInputStream(config, new ByteArrayInputStream(new byte[] { 'P', 'L', 0 })))
+            .getMessage());
+    assertEquals("pack stream too short for header magic: expected 2 bytes 0x504b, found 1 bytes 0x50",
+        assertThrows(
+            EOFException.class,
+            () -> new PackInputStream(config, new ByteArrayInputStream(new byte[] { 'P' })))
+            .getMessage());
+    assertEquals("pack stream too short for header magic: expected 2 bytes 0x504b, found 0 bytes",
+        assertThrows(
+            EOFException.class,
+            () -> new PackInputStream(config, new ByteArrayInputStream(new byte[0])))
+            .getMessage());
   }
 
 
