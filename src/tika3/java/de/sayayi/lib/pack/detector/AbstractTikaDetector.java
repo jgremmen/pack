@@ -125,8 +125,10 @@ public abstract class AbstractTikaDetector implements Detector
    * <p>
    * If the input can be successfully read as a pack stream, an annotated {@link MediaType} is returned (see
    * {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise, {@link MediaType#OCTET_STREAM OCTET_STREAM} is
-   * returned as a fallback. The input stream must support {@linkplain InputStream#markSupported() marking}; it is
-   * marked and reset so that it can be read again by subsequent detectors, and it is not closed.
+   * returned as a fallback. Only {@link IOException}s while reading the header are treated this way; runtime exceptions
+   * indicate a programming error and are propagated. The input stream must support
+   * {@linkplain InputStream#markSupported() marking}; it is marked and reset so that it can be read again by subsequent
+   * detectors, and it is not closed.
    *
    * @param input     the input stream to probe, or {@code null}
    * @param metadata  document metadata (unused)
@@ -147,7 +149,7 @@ public abstract class AbstractTikaDetector implements Detector
         return buildAnnotatedMimeType(
             packStream.getVersion(),
             packConfig.isCompressionSupport() ? packStream.isCompressed() : null);
-      } catch(Exception ignored) {
+      } catch(IOException ignored) {
       } finally {
         input.reset();
       }

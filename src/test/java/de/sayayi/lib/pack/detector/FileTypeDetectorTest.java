@@ -19,6 +19,7 @@ import com.sun.management.UnixOperatingSystemMXBean;
 import de.sayayi.lib.pack.PackConfig;
 import de.sayayi.lib.pack.PackOutputStream;
 import org.apache.tika.mime.MediaType;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.nio.file.Path;
+import java.util.OptionalInt;
 
 import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
 import static java.nio.file.Files.*;
@@ -106,6 +108,46 @@ class FileTypeDetectorTest
     assertThrows(
         IllegalArgumentException.class,
         () -> new AbstractFileTypeDetector(packConfig, "application/my-bitpack") {});
+  }
+
+
+  @Test
+  @DisplayName("Detect file with corrupt compressed payload")
+  void detectCorruptCompression() throws IOException
+  {
+    final var packPath = tempDir.resolve("corrupt.pack");
+
+    new PackOutputStream(PACK_CONFIG, 12, true, newOutputStream(packPath)).close();
+
+    // header: magic, compression bit + 5-bit SmallVar version offset 11 (1 byte), followed by the GZIP header
+    final var bytes = readAllBytes(packPath);
+    final var gzipOffset = PACK_CONFIG.getMagic().length + 1;
+
+    assertEquals((byte)0x1f, bytes[gzipOffset]);
+    bytes[gzipOffset] = 0;
+    write(packPath, bytes);
+
+    assertNull(new MyFileTypeDetector().probeContentType(packPath));
+  }
+
+
+  @Test
+  @DisplayName("Propagate runtime exceptions")
+  void propagateRuntimeException() throws IOException
+  {
+    final var packPath = tempDir.resolve("test.pack");
+
+    new PackOutputStream(PACK_CONFIG, 12, false, newOutputStream(packPath)).close();
+
+    final var detector = new AbstractFileTypeDetector(PACK_CONFIG, "application/my-bitpack") {
+      @Override
+      protected @NotNull String buildAnnotatedMimeType(@NotNull OptionalInt version, Boolean compressed) {
+        throw new IllegalStateException("bug");
+      }
+    };
+
+    assertEquals("bug", assertThrows(IllegalStateException.class, () -> detector.probeContentType(packPath))
+        .getMessage());
   }
 
 

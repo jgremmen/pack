@@ -127,12 +127,14 @@ dependencies {
 
   testImplementation libs.tika.core
 
+  tika3TestCompileOnly libs.jetbrains.annotations
   tika3TestImplementation libs.junit.jupiter.api
   tika3TestImplementation libs.junit.jupiter.params
   tika3TestImplementation libs.tika.core
   tika3TestRuntimeOnly libs.junit.jupiter.engine
   tika3TestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+  tika4TestCompileOnly libs.jetbrains.annotations
   tika4TestImplementation libs.junit.jupiter.api
   tika4TestImplementation libs.junit.jupiter.params
   tika4TestImplementation libs.tika4.core

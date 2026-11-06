@@ -24,6 +24,7 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -33,6 +34,7 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.nio.file.Path;
+import java.util.OptionalInt;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.newOutputStream;
@@ -188,6 +190,30 @@ class TikaDetectorTest
 
 
   @Test
+  @DisplayName("Propagate runtime exceptions")
+  void propagateRuntimeException() throws IOException
+  {
+    final var byteStream = new ByteArrayOutputStream();
+
+    new PackOutputStream(PACK_CONFIG, 85, byteStream).close();
+
+    final var detector = new AbstractTika3Detector(PACK_CONFIG, "application/my-bitpack") {
+      @Override
+      protected @NotNull MediaType buildAnnotatedMimeType(@NotNull OptionalInt version, Boolean compressed) {
+        throw new IllegalStateException("bug");
+      }
+    };
+    final var input = new ByteArrayInputStream(byteStream.toByteArray());
+
+    assertEquals("bug", assertThrows(IllegalStateException.class, () -> detector.detect(input, new Metadata()))
+        .getMessage());
+
+    // stream must have been reset to its start
+    assertArrayEquals(PACK_CONFIG.getMagic(), input.readNBytes(PACK_CONFIG.getMagic().length));
+  }
+
+
+  @Test
   @DisplayName("Detect empty stream")
   void detectEmpty() throws IOException {
     assertEquals(OCTET_STREAM, detector.detect(new ByteArrayInputStream(new byte[0]), new Metadata()));
@@ -231,7 +257,7 @@ class TikaDetectorTest
 
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException
+    public int read(byte @NotNull [] b, int off, int len) throws IOException
     {
       final var n = super.read(b, off, len);
       if (n > 0)

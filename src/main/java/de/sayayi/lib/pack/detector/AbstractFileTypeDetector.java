@@ -20,6 +20,7 @@ import de.sayayi.lib.pack.PackInputStream;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.OptionalInt;
@@ -118,7 +119,8 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
    * The file is recognized if its header can be successfully read as a pack stream using the configured
    * {@link PackConfig}. In that case, an annotated MIME type string is returned (see
    * {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise, including when the file cannot be read,
-   * {@code null} is returned to indicate that this detector does not recognize the file.
+   * {@code null} is returned to indicate that this detector does not recognize the file. Only {@link IOException}s are
+   * treated this way; runtime exceptions indicate a programming error and are propagated.
    *
    * @param path  the path to the file to probe
    *
@@ -132,7 +134,7 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
       return buildAnnotatedMimeType(
           packStream.getVersion(),
           packConfig.isCompressionSupport() ? packStream.isCompressed() : null);
-    } catch(Exception ignored) {
+    } catch(IOException ignored) {
     }
 
     return null;

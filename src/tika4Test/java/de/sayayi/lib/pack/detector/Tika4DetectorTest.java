@@ -22,11 +22,13 @@ import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.ParseContext;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
+import java.util.OptionalInt;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.apache.tika.mime.MediaType.OCTET_STREAM;
@@ -117,6 +119,31 @@ class Tika4DetectorTest
     assertThrows(
         IllegalArgumentException.class,
         () -> new AbstractTika4Detector(packConfig, "application/my-bitpack") {});
+  }
+
+
+  @Test
+  @DisplayName("Propagate runtime exceptions")
+  void propagateRuntimeException() throws IOException
+  {
+    final var byteStream = new ByteArrayOutputStream();
+
+    new PackOutputStream(PACK_CONFIG, 85, byteStream).close();
+
+    final var detector = new AbstractTika4Detector(PACK_CONFIG, "application/my-bitpack") {
+      @Override
+      protected @NotNull MediaType buildAnnotatedMimeType(@NotNull OptionalInt version, Boolean compressed) {
+        throw new IllegalStateException("bug");
+      }
+    };
+
+    try(var input = TikaInputStream.get(byteStream.toByteArray())) {
+      assertEquals("bug", assertThrows(IllegalStateException.class,
+          () -> detector.detect(input, new Metadata(), new ParseContext())).getMessage());
+
+      // stream must have been reset to its start
+      assertArrayEquals(PACK_CONFIG.getMagic(), input.readNBytes(PACK_CONFIG.getMagic().length));
+    }
   }
 
 
