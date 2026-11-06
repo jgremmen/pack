@@ -152,21 +152,23 @@ public class PackOutputStream implements Closeable, Flushable
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
                           boolean compress, @NotNull OutputStream stream) throws IOException
   {
+    if (compress && !packConfig.isCompressionSupport())
+      throw new IllegalArgumentException("Compression is not supported");
+
+    var versionBits = packConfig.getVersionBits();
+    if (versionBits != 0 &&
+        (version < packConfig.getLowestVersionNumber() || version > packConfig.getHighestVersionNumber()))
+      throw new IllegalArgumentException("Invalid version number: " + version);
+
     this.stream = stream;
 
     stream.write(packConfig.getMagic());
 
     if (packConfig.isCompressionSupport())
       writeBoolean(compress);
-    else if (compress)
-      throw new IllegalArgumentException("Compression is not supported");
 
-    var versionBits = packConfig.getVersionBits();
     if (versionBits != 0)
     {
-      if (version < packConfig.getLowestVersionNumber() || version > packConfig.getHighestVersionNumber())
-        throw new IllegalArgumentException("Invalid version number: " + version);
-
       version -= packConfig.getLowestVersionNumber();
 
       if (versionBits <= 8)

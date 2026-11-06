@@ -23,11 +23,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.UTFDataFormatException;
+import java.io.*;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -443,6 +439,35 @@ class PackStreamTest
     assertThrows(
         IllegalArgumentException.class,
         () -> unpack(0xff, 0xff).skip(-1));
+  }
+
+
+  @Test
+  @DisplayName("Reject invalid arguments without writing to the stream")
+  void packRejectInvalidArguments()
+  {
+    final var byteStream = new ByteArrayOutputStream();
+    final var versionConfig = new PackConfig
+        .Builder()
+        .withMagic("MyTeSt")
+        .withVersionRange(1, 100)
+        .build();
+
+    assertEquals("Compression is not supported", assertThrows(
+        IllegalArgumentException.class,
+        () -> new PackOutputStream(versionConfig, 1, true, byteStream))
+        .getMessage());
+    assertEquals("Invalid version number: 0", assertThrows(
+        IllegalArgumentException.class,
+        () -> new PackOutputStream(versionConfig, 0, false, byteStream))
+        .getMessage());
+    final var tooHigh = versionConfig.getHighestVersionNumber() + 1;
+    assertEquals("Invalid version number: " + tooHigh, assertThrows(
+        IllegalArgumentException.class,
+        () -> new PackOutputStream(versionConfig, tooHigh, false, byteStream))
+        .getMessage());
+
+    assertEquals(0, byteStream.size());
   }
 
 
