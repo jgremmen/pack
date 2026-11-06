@@ -206,9 +206,9 @@ public class PackOutputStream implements Closeable
    * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public <T extends Enum<T>> void writeEnum(@NotNull T value, @Range(from = 1, to = 16) int bitWidth) throws IOException
   {
-    //noinspection ConstantValue
     if (bitWidth <= 0 || bitWidth > 16)
       throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
 
@@ -274,7 +274,8 @@ public class PackOutputStream implements Closeable
    *
    * @param value  unsigned value (0..65535)
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IllegalArgumentException  if {@code value} is not in the range 0..65535
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
   public void writeUnsignedShort(@Range(from = 0, to = 65535) int value) throws IOException {
@@ -291,7 +292,7 @@ public class PackOutputStream implements Closeable
    */
   @Contract(mutates = "this,io")
   public void writeInt(int value) throws IOException {
-    writeLarge(value, 32);
+    writeLarge(value & 0xffff_ffffL, 32);
   }
 
 
@@ -382,11 +383,16 @@ public class PackOutputStream implements Closeable
    *
    * @param value  unsigned value (0..255)
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IllegalArgumentException  if {@code value} is not in the range 0..255
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public void writeSmallVar(@Range(from = 0, to = 255) int value) throws IOException
   {
+    if (value < 0 || value > 255)
+      throw new IllegalArgumentException("value " + value + " is not in range 0..255");
+
     if (value <= 7)
       writeSmall(value, 4);  // 0vvv
     else if (value <= 15)
@@ -402,15 +408,20 @@ public class PackOutputStream implements Closeable
    * @param value     unsigned value (0..255)
    * @param bitWidth  number of bits to write (1..8)
    *
-   * @throws IllegalArgumentException  if the value does not fit in the given bit width
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..8, or if the value is negative or does
+   *                                   not fit in the given bit width
    * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public void writeSmall(@Range(from = 0, to = 255) int value,
                          @Range(from = 1, to = 8) int bitWidth) throws IOException
   {
-    if (value >= (1 << bitWidth))
-      throw new IllegalArgumentException("value " + value + " occupies more than " + bitWidth + " bits");
+    if (bitWidth < 1 || bitWidth > 8)
+      throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
+    //noinspection ConstantValue
+    if (value < 0 || value >= (1 << bitWidth))
+      throw new IllegalArgumentException("value " + value + " does not fit in " + bitWidth + " bits");
 
     var bitsRemaining = bit + 1 - bitWidth;
 
@@ -435,16 +446,25 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Writes a value using exactly the specified number of bits (9..64).
+   * Writes an unsigned value using exactly the specified number of bits (9..64).
    *
-   * @param value     the value to write
+   * @param value     the unsigned value to write. For a {@code bitWidth} of 64, all values are accepted and written as
+   *                  is; otherwise the value must be in the range 0..2<sup>bitWidth</sup>-1
    * @param bitWidth  number of bits to write (9..64)
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 9..64, or if the value does not fit in
+   *                                   the given bit width
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public void writeLarge(long value, @Range(from = 9, to = 64) int bitWidth) throws IOException
   {
+    if (bitWidth < 9 || bitWidth > 64)
+      throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
+    if (bitWidth < 64 && (value >>> bitWidth) != 0)
+      throw new IllegalArgumentException("value " + value + " does not fit in " + bitWidth + " bits");
+
     if (bit < 7)
     {
       var bitsLeft = bit + 1 - bitWidth;

@@ -176,10 +176,10 @@ public class PackInputStream implements Closeable
    * @throws IOException               if an I/O error occurs or if the ordinal read is not valid for the enum type
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType,
                                                  @Range(from = 1, to = 16) int bitWidth) throws IOException
   {
-    //noinspection ConstantValue
     if (bitWidth <= 0 || bitWidth > 16)
       throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
 
@@ -548,11 +548,16 @@ public class PackInputStream implements Closeable
    *
    * @return  value in range 0..255
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..8
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public @Range(from = 0, to = 255) int readSmall(@Range(from = 1, to = 8) int bitWidth) throws IOException
   {
+    if (bitWidth < 1 || bitWidth > 8)
+      throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
+
     assertData();
 
     final var bitsRemaining = bit + 1 - bitWidth;
@@ -588,11 +593,16 @@ public class PackInputStream implements Closeable
    *
    * @return  the value read
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 9..64
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public long readLarge(@Range(from = 9, to = 64) int bitWidth) throws IOException
   {
+    if (bitWidth < 9 || bitWidth > 64)
+      throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
+
     assertData();
 
     long value = b & ((1L << (bit + 1)) - 1);
@@ -654,11 +664,16 @@ public class PackInputStream implements Closeable
    *
    * @param bitWidth  number of bits to skip
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws IllegalArgumentException  if {@code bitWidth} is negative
+   * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
+  @SuppressWarnings("ConstantValue")
   public void skip(@Range(from = 0, to = MAX_VALUE) int bitWidth) throws IOException
   {
+    if (bitWidth < 0)
+      throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
+
     while(bitWidth > 0)
     {
       assertData();

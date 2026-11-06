@@ -362,6 +362,81 @@ class PackStreamTest
   }
 
 
+  @Test
+  @DisplayName("Pack with argument out of range")
+  void packArgumentOutOfRange() throws IOException
+  {
+    try(var packStream = new PackOutputStream(new PackConfig.Builder().build(), new ByteArrayOutputStream())) {
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeSmall(-1, 4));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeSmall(16, 4));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeSmall(0, 0));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeSmall(0, 9));
+
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeSmallVar(-1));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeSmallVar(256));
+
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeUnsignedShort(-1));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeUnsignedShort(65536));
+
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeLarge(0, 8));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeLarge(0, 65));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeLarge(-1, 63));
+      assertThrows(IllegalArgumentException.class, () -> packStream.writeLarge(1L << 40, 40));
+    }
+  }
+
+
+  @Test
+  @DisplayName("Pack/unpack values at range boundaries")
+  void packRangeBoundaries() throws IOException
+  {
+    final var byteStream = new ByteArrayOutputStream();
+
+    try(var packStream = new PackOutputStream(PACK_CONFIG, byteStream)) {
+      packStream.writeSmall(15, 4);
+      packStream.writeSmallVar(255);
+      packStream.writeUnsignedShort(65535);
+      packStream.writeLarge((1L << 40) - 1, 40);
+      packStream.writeLarge(-1, 64);
+      packStream.writeInt(-1);
+      packStream.writeInt(Integer.MIN_VALUE);
+    }
+
+    try(var packStream = new PackInputStream(PACK_CONFIG, new ByteArrayInputStream(byteStream.toByteArray()))) {
+      assertEquals(15, packStream.readSmall(4));
+      assertEquals(255, packStream.readSmallVar());
+      assertEquals(65535, packStream.readUnsignedShort());
+      assertEquals((1L << 40) - 1, packStream.readLarge(40));
+      assertEquals(-1, packStream.readLarge(64));
+      assertEquals(-1, packStream.readInt());
+      assertEquals(Integer.MIN_VALUE, packStream.readInt());
+    }
+  }
+
+
+  @Test
+  @DisplayName("Unpack with bit width out of range")
+  @SuppressWarnings("resource")
+  void unpackBitWidthOutOfRange()
+  {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> unpack(0xff, 0xff).readSmall(0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> unpack(0xff, 0xff).readSmall(9));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> unpack(0xff, 0xff).readLarge(8));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> unpack(0xff, 0xff).readLarge(65));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> unpack(0xff, 0xff).skip(-1));
+  }
+
+
   private static @NotNull PackInputStream unpack(int... bytes) throws IOException
   {
     final var data = new byte[bytes.length];
