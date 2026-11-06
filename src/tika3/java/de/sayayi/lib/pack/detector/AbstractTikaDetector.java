@@ -23,6 +23,7 @@ import org.apache.tika.mime.MediaType;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -119,7 +120,7 @@ public abstract class AbstractTikaDetector implements Detector
       // worst case: magic.length + (1bit (compression) + versionBits + 7) / 8 + 10 bytes (zip header)
       input.mark(packConfig.getMagic().length + 11 + packConfig.getVersionBits() / 8);
 
-      try(var packStream = new PackInputStream(packConfig, input)) {
+      try(var packStream = new PackInputStream(packConfig, new CloseShieldInputStream(input))) {
         return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
       } catch(Exception ignored) {
       } finally {
@@ -153,5 +154,23 @@ public abstract class AbstractTikaDetector implements Detector
       parameters.put("compress", Boolean.toString(compressed));
 
     return new MediaType(mimeType, parameters);
+  }
+
+
+
+
+  /**
+   * Input stream wrapper which ignores {@link #close()}, leaving the wrapped stream open.
+   */
+  private static final class CloseShieldInputStream extends FilterInputStream
+  {
+    private CloseShieldInputStream(@NotNull InputStream in) {
+      super(in);
+    }
+
+
+    @Override
+    public void close() {
+    }
   }
 }

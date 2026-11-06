@@ -21,18 +21,23 @@ import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.CompositeDetector;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
+import java.nio.file.Path;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.nio.file.Files.newOutputStream;
 import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 import static org.apache.tika.mime.MediaType.TEXT_PLAIN;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
@@ -76,6 +81,29 @@ class TikaDetectorTest
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
     assertEquals("85", mediaType.getParameters().get("version"));
     assertEquals("true", mediaType.getParameters().get("compress"));
+  }
+
+
+  @Test
+  @DisplayName("Detect valid file stream without closing it")
+  void detectValidFile(@TempDir Path tempDir) throws IOException
+  {
+    final var packPath = tempDir.resolve("test.pack");
+
+    try(var packStream = new PackOutputStream(PACK_CONFIG, 85, newOutputStream(packPath))) {
+      packStream.writeInt(42);
+    }
+
+    try(var input = TikaInputStream.get(packPath)) {
+      final var mediaType = detector.detect(input, new Metadata());
+
+      assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
+      assertEquals("85", mediaType.getParameters().get("version"));
+      assertEquals("true", mediaType.getParameters().get("compress"));
+
+      // stream must still be open and reset to its start
+      assertArrayEquals(PACK_CONFIG.getMagic(), input.readNBytes(PACK_CONFIG.getMagic().length));
+    }
   }
 
 
