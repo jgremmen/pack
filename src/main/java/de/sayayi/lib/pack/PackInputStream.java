@@ -215,7 +215,7 @@ public class PackInputStream implements Closeable
     if (bitWidth <= 0 || bitWidth > 16)
       throw new IllegalArgumentException("Invalid bitWidth: " + bitWidth);
 
-    return toEnum(enumType, enumType.getEnumConstants(),
+    return toEnum(enumType, EnumConstants.of(enumType),
         bitWidth <= 8 ? readSmall(bitWidth) : (int)readLarge(bitWidth));
   }
 
@@ -246,7 +246,7 @@ public class PackInputStream implements Closeable
   @SuppressWarnings("DeprecatedIsStillUsed")
   public <T extends Enum<T>> @NotNull T readEnumOld(@NotNull Class<T> enumType) throws IOException
   {
-    final var enums = enumType.getEnumConstants();
+    final var enums = EnumConstants.of(enumType);
     final var n = enums.length;
     final var bits = bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8));
 
@@ -273,7 +273,7 @@ public class PackInputStream implements Closeable
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> @NotNull T readEnum(@NotNull Class<T> enumType) throws IOException
   {
-    final var enums = enumType.getEnumConstants();
+    final var enums = EnumConstants.of(enumType);
     final var bits = max(SIZE - numberOfLeadingZeros(enums.length - 1), 1);
 
     return toEnum(enumType, enums, bits <= 8 ? readSmall(bits) : (int)readLarge(bits));
@@ -328,8 +328,7 @@ public class PackInputStream implements Closeable
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> void skipEnumOld(@NotNull Class<T> enumType) throws IOException
   {
-    final var enums = enumType.getEnumConstants();
-    final var n = enums.length;
+    final var n = EnumConstants.count(enumType);
 
     skip(bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
   }
@@ -351,7 +350,7 @@ public class PackInputStream implements Closeable
    */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> void skipEnum(@NotNull Class<T> enumType) throws IOException {
-    skip(max(SIZE - numberOfLeadingZeros(enumType.getEnumConstants().length - 1), 1));
+    skip(max(SIZE - numberOfLeadingZeros(EnumConstants.count(enumType) - 1), 1));
   }
 
 

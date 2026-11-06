@@ -260,7 +260,7 @@ public class PackOutputStream implements Closeable
   @SuppressWarnings("DeprecatedIsStillUsed")
   public <T extends Enum<T>> void writeEnumOld(@NotNull T value) throws IOException
   {
-    final var n = value.getDeclaringClass().getEnumConstants().length;
+    final var n = EnumConstants.count(value.getDeclaringClass());
 
     writeEnum(value, bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
   }
@@ -282,7 +282,7 @@ public class PackOutputStream implements Closeable
    */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException {
-    writeEnum(value, max(SIZE - numberOfLeadingZeros(value.getDeclaringClass().getEnumConstants().length - 1), 1));
+    writeEnum(value, max(SIZE - numberOfLeadingZeros(EnumConstants.count(value.getDeclaringClass()) - 1), 1));
   }
 
 
