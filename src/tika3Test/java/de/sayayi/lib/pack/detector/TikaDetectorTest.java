@@ -41,6 +41,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
+ * Tests {@link AbstractTika3Detector}, compiled and executed against Apache Tika 3.
+ * <p>
+ * Covers detection of pack streams and files with and without compression support, the annotated media type returned,
+ * leaving the probed stream open, rejection of pack configurations without magic bytes, and the fallback for empty and
+ * incomplete streams.
+ *
  * @author Jeroen Gremmen
  * @since 0.1.0
  */

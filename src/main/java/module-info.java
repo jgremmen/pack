@@ -19,25 +19,24 @@
  * <p>
  * This module provides classes for reading and writing data in a compact binary format where values are packed using
  * the smallest possible number of bits. It supports configurable stream headers with magic bytes, version ranges, and
- * optional GZIP compression.
+ * optional GZIP compression. In addition, it provides base classes for detecting the content type of pack files.
  * <p>
- * The main API consists of:
+ * The module exports the following packages:
  * <ul>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackConfig} - configures the binary stream format (magic bytes, versioning,
- *     compression)
+ *     {@link de.sayayi.lib.pack}: the core API, consisting of {@link de.sayayi.lib.pack.PackConfig} (configures the
+ *     binary stream format: magic bytes, versioning, compression), {@link de.sayayi.lib.pack.PackOutputStream} (writes
+ *     booleans, enums, integers, longs, and strings at the bit level) and {@link de.sayayi.lib.pack.PackInputStream}
+ *     (reads data back from a pack stream)
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackOutputStream} - writes booleans, enums, integers, longs, and strings at the bit
- *     level
- *   </li>
- *   <li>
- *     {@link de.sayayi.lib.pack.PackInputStream} - reads data back from a pack stream
+ *     {@link de.sayayi.lib.pack.detector}: abstract base classes for detecting pack file content types via the Java NIO
+ *     {@link java.nio.file.spi.FileTypeDetector} SPI and the Apache Tika detection API
  *   </li>
  * </ul>
  * <p>
- * The {@link de.sayayi.lib.pack.detector} package provides abstract base classes for detecting pack file content types
- * via the Java NIO {@link java.nio.file.spi.FileTypeDetector} SPI and the Apache Tika detection API.
+ * The dependencies on Apache Tika and JetBrains annotations are optional ({@code requires static}). Apache Tika is only
+ * needed at runtime when using one of the Tika based detectors.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0

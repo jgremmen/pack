@@ -35,8 +35,11 @@ import static java.util.Objects.requireNonNull;
  * Subclasses provide a specific {@link PackConfig} and base MIME type. This class handles probing files by attempting
  * to read them as pack streams and returning an annotated MIME type that may include version and compression
  * parameters.
+ * <p>
+ * Detectors hold no mutable state and can be used by multiple threads concurrently.
  *
  * <h2>Usage Example</h2>
+ * <p>
  * Create a concrete subclass that supplies your pack configuration and MIME type:
  * <pre>{@code
  * public class MyPackDetector extends AbstractFileTypeDetector
@@ -52,13 +55,13 @@ import static java.util.Objects.requireNonNull;
  *   }
  * }
  * }</pre>
- *
+ * <p>
  * Register the detector as a service provider by creating a file
  * {@code META-INF/services/java.nio.file.spi.FileTypeDetector} containing the fully qualified class name:
  * <pre>
  * com.example.MyPackDetector
  * </pre>
- *
+ * <p>
  * Once registered, {@link java.nio.file.Files#probeContentType(Path)} will automatically use your detector and return
  * an annotated MIME type such as {@code application/x-mypack;version=3;compress=true}.
  *
@@ -67,10 +70,18 @@ import static java.util.Objects.requireNonNull;
  */
 public abstract class AbstractFileTypeDetector extends FileTypeDetector
 {
-  /** Pack configuration used to read and validate pack stream headers. */
+  /**
+   * Pack configuration used to read and validate pack stream headers.
+   *
+   * @since 0.3.0
+   */
   protected final PackConfig packConfig;
 
-  /** Base MIME type returned when a pack file is successfully detected. */
+  /**
+   * Base MIME type returned when a pack file is successfully detected.
+   *
+   * @since 0.3.0
+   */
   protected final String mimeType;
 
 
@@ -96,9 +107,11 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
 
 
   /**
-   * Probes the given file path to determine whether it is a valid pack file.
+   * Probes the given file to determine whether it is a pack file matching the configured format.
    * <p>
-   * If the file can be successfully read as a pack stream, an annotated MIME type string is returned. Otherwise,
+   * The file is recognized if its header can be successfully read as a pack stream using the configured
+   * {@link PackConfig}. In that case, an annotated MIME type string is returned (see
+   * {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise, including when the file cannot be read,
    * {@code null} is returned to indicate that this detector does not recognize the file.
    *
    * @param path  the path to the file to probe
@@ -123,6 +136,10 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
   /**
    * Builds an annotated MIME type string from the base MIME type, optionally appending {@code version} and
    * {@code compress} parameters.
+   * <p>
+   * For example, a base MIME type {@code application/x-mypack} with version {@code 3} and compression results in
+   * {@code application/x-mypack;version=3;compress=true}. Subclasses may override this method to customize the returned
+   * MIME type.
    *
    * @param version     the pack version, or empty if no version information is available
    * @param compressed  {@code true} or {@code false} if compression status is known, or {@code null} if not applicable

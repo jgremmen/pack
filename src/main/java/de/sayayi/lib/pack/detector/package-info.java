@@ -17,20 +17,25 @@
 /**
  * Provides abstract base classes for detecting pack file content types.
  * <p>
- * This package contains detectors that identify pack files and determine their MIME type by reading and validating
- * the pack stream header. Two detection strategies are supported:
+ * This package contains detectors that identify pack files and determine their MIME type by reading and validating the
+ * pack stream header. The detected MIME type is annotated with the {@code version} and {@code compress} parameters
+ * where applicable, for example {@code application/x-mypack;version=3;compress=true}. Applications create a concrete
+ * subclass supplying their {@link de.sayayi.lib.pack.PackConfig} and base MIME type, and register it as a service
+ * provider.
+ * <p>
+ * Two detection strategies are supported:
  * <ul>
  *   <li>
- *     {@link de.sayayi.lib.pack.detector.AbstractFileTypeDetector} - for the
+ *     {@link de.sayayi.lib.pack.detector.AbstractFileTypeDetector}: for the
  *     {@linkplain java.nio.file.spi.FileTypeDetector Java NIO file type detection SPI}
  *   </li>
  *   <li>
- *     {@code AbstractTika3Detector} - for the Apache Tika detection API, compiled against and intended to be used
- *     with Apache Tika 3
+ *     {@code AbstractTika3Detector}: for the Apache Tika detection API, compiled against and intended to be used with
+ *     Apache Tika 3. It replaces the deprecated {@code AbstractTikaDetector}
  *   </li>
  *   <li>
- *     {@code AbstractTika4Detector} - for the Apache Tika detection API, compiled against and intended to be used
- *     with Apache Tika 4
+ *     {@code AbstractTika4Detector}: for the Apache Tika detection API, compiled against and intended to be used with
+ *     Apache Tika 4
  *   </li>
  * </ul>
  * <p>
@@ -38,5 +43,7 @@
  * against its respective Tika version (Tika 3 or Tika 4) and packaged into this same package. Depending on which
  * version of Apache Tika is available on the classpath at compile and runtime, only the matching class can be
  * referenced and used.
+ *
+ * @since 0.1.0
  */
 package de.sayayi.lib.pack.detector;

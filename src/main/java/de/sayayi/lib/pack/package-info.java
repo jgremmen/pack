@@ -17,18 +17,24 @@
 /**
  * Provides classes for reading and writing data in a compact bit-level binary format.
  * <p>
+ * Values are packed using the smallest possible number of bits. A pack stream starts with a header that can contain
+ * magic bytes, a version number and a compression flag, followed by the (optionally GZIP compressed) payload.
+ * <p>
  * The core classes in this package are:
  * <ul>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackConfig} - defines the structure of a pack stream header, including magic bytes,
+ *     {@link de.sayayi.lib.pack.PackConfig}: defines the structure of a pack stream header, including magic bytes,
  *     version range, and compression support
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackOutputStream} - writes data to a pack stream
+ *     {@link de.sayayi.lib.pack.PackOutputStream}: writes booleans, enums, integers, longs, and strings to a pack
+ *     stream
  *   </li>
  *   <li>
- *     {@link de.sayayi.lib.pack.PackInputStream} - reads data from a pack stream
+ *     {@link de.sayayi.lib.pack.PackInputStream}: reads data back from a pack stream
  *   </li>
  * </ul>
+ *
+ * @since 0.1.0
  */
 package de.sayayi.lib.pack;

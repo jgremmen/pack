@@ -25,6 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 
 /**
+ * Tests {@link PackConfig} and its {@link PackConfig.Builder builder}.
+ * <p>
+ * Verifies that the magic bytes of a configuration cannot be changed afterwards by modifying the array passed to the
+ * builder (before or after building) or to the constructor.
+ *
  * @author Jeroen Gremmen
  * @since 0.3.2
  */

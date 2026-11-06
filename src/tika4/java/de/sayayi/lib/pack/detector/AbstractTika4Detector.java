@@ -36,15 +36,18 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 /**
  * Abstract base class for detecting pack file content types using the {@link Detector Apache Tika detection API}.
  * <p>
- * This class is compiled against and intended to be used with Apache Tika 4. A separate, source-compatible but
- * binary-incompatible class named {@code AbstractTikaDetector} (same package, different artifact/classpath) is
- * provided for use with Apache Tika 3.
+ * This class is compiled against and intended to be used with Apache Tika 4. For Apache Tika 3, the separate class
+ * {@code AbstractTika3Detector} in the same package is provided, which is compiled against Tika 3 and is binary
+ * incompatible with this class.
  * <p>
  * Subclasses provide a specific {@link PackConfig} and base MIME type. This class handles detection by attempting to
- * read the input as a pack stream and returning an annotated {@link MediaType} that may include version and
- * compression parameters.
+ * read the input as a pack stream and returning an annotated {@link MediaType} that may include version and compression
+ * parameters.
+ * <p>
+ * Detectors hold no mutable state and can be used by multiple threads concurrently.
  *
  * <h2>Usage Example</h2>
+ * <p>
  * Create a concrete subclass that supplies your pack configuration and MIME type:
  * <pre>{@code
  * public class MyPackTikaDetector extends AbstractTika4Detector
@@ -60,13 +63,13 @@ import static org.apache.tika.mime.MediaType.OCTET_STREAM;
  *   }
  * }
  * }</pre>
- *
+ * <p>
  * Register the detector as a service provider by creating a file
  * {@code META-INF/services/org.apache.tika.detect.Detector} containing the fully qualified class name:
  * <pre>
  * com.example.MyPackTikaDetector
  * </pre>
- *
+ * <p>
  * Once registered, Tika's detection framework will automatically use your detector and return an annotated
  * {@link MediaType} such as {@code application/x-mypack;version=3;compress=true}.
  *
@@ -108,9 +111,10 @@ public abstract class AbstractTika4Detector implements Detector
   /**
    * Detects whether the given input stream contains a valid pack file.
    * <p>
-   * If the input can be successfully read as a pack stream, an annotated {@link MediaType} is returned. Otherwise,
-   * {@link MediaType#OCTET_STREAM OCTET_STREAM} is returned as a fallback. The input stream is marked and reset so
-   * that it can be re-read by subsequent detectors.
+   * If the input can be successfully read as a pack stream, an annotated {@link MediaType} is returned (see
+   * {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise, {@link MediaType#OCTET_STREAM OCTET_STREAM} is
+   * returned as a fallback. The input stream is marked and reset so that it can be read again by subsequent detectors,
+   * and it is not closed.
    *
    * @param input     the input stream to probe, or {@code null}
    * @param metadata  document metadata (unused)
@@ -147,6 +151,8 @@ public abstract class AbstractTika4Detector implements Detector
   /**
    * Builds an annotated {@link MediaType} from the base MIME type, optionally including {@code version} and
    * {@code compress} parameters.
+   * <p>
+   * Subclasses may override this method to customize the returned media type.
    *
    * @param version     the pack version, or empty if no version information is available
    * @param compressed  {@code true} or {@code false} if compression status is known, or {@code null} if not applicable

@@ -30,9 +30,13 @@ import static java.util.Objects.requireNonNull;
  * Configuration for reading and writing pack streams.
  * <p>
  * A pack configuration defines the structure of a pack stream header, including the magic bytes used to identify the
- * format, the supported version range, and whether compression is enabled.
+ * format, the supported version range, and whether compression is supported.
  * <p>
- * Use the {@link Builder} to create instances of this class.
+ * Use the {@link Builder} to create instances of this class. The same configuration must be used for writing a pack
+ * stream with {@link PackOutputStream} and for reading it back with {@link PackInputStream}.
+ * <p>
+ * Instances are immutable (the magic bytes are copied on construction and on retrieval) and can therefore be shared
+ * safely between threads.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
@@ -77,6 +81,8 @@ public class PackConfig
 
   /**
    * Creates a new pack configuration.
+   * <p>
+   * This constructor is intended for subclasses; other callers should use the {@link Builder}.
    *
    * @param magic                magic bytes used to identify the pack format, not {@code null}. The array is copied, so
    *                             later modifications to it do not affect this configuration
@@ -118,6 +124,8 @@ public class PackConfig
 
   /**
    * Returns the highest version number in the supported range.
+   * <p>
+   * If versioning is disabled, this is the same as {@link #getLowestVersionNumber()}.
    *
    * @return  the highest supported version number
    */
@@ -140,6 +148,8 @@ public class PackConfig
 
   /**
    * Tells whether this pack format supports compression.
+   * <p>
+   * If supported, the stream header contains a flag telling whether the payload of a particular stream is compressed.
    *
    * @return  {@code true} if compression is supported, {@code false} otherwise
    */
@@ -156,17 +166,31 @@ public class PackConfig
    * <p>
    * The builder provides a fluent API to configure magic bytes, version range, and compression support. By default, the
    * configuration has no magic bytes, no versioning, and compression disabled.
+   * <p>
+   * Each call to {@link #build()} returns a new, independent configuration, so a builder can be reused. Builders are
+   * not thread safe.
+   *
+   * @since 0.1.0
    */
   public static class Builder
   {
+    /** Magic bytes for the configuration to build, empty by default. */
     private byte[] magic = new byte[0];
+
+    /** Lowest version number for the configuration to build. */
     private int lowestVersionNumber = 0;
+
+    /** Number of version bits for the configuration to build, {@code 0} if versioning is disabled. */
     private int versionBits = 0;
+
+    /** Compression support flag for the configuration to build. */
     private boolean compressionSupport = false;
 
 
     /**
      * Disables versioning for this pack configuration.
+     * <p>
+     * This resets any version range set previously with {@link #withVersionRange(int, int)}.
      *
      * @return  this builder
      */
@@ -199,6 +223,8 @@ public class PackConfig
     /**
      * Sets the magic bytes from the given string, encoded as
      * {@link java.nio.charset.StandardCharsets#US_ASCII US-ASCII}.
+     * <p>
+     * Characters that cannot be represented in US-ASCII are replaced by {@code '?'}.
      *
      * @param magic  magic string, not {@code null}
      *
@@ -226,6 +252,8 @@ public class PackConfig
 
     /**
      * Enables compression support.
+     * <p>
+     * This is equivalent to {@code withCompressionSupport(true)}.
      *
      * @return  this builder
      */
@@ -251,8 +279,11 @@ public class PackConfig
 
 
     /**
-     * Sets the supported version range. The number of bits required to encode the version is automatically derived from
-     * the range.
+     * Sets the supported version range.
+     * <p>
+     * The number of bits required to encode the version is automatically derived from the range. If both versions are
+     * equal, no bits are required: the version is then not stored in the stream header, and
+     * {@link PackInputStream#getVersion()} returns an empty result.
      *
      * @param lowestVersion   the lowest supported version number, must not be negative
      * @param highestVersion  the highest supported version number, must be &ge; {@code lowestVersion}

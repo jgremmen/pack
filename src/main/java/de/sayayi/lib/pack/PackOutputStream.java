@@ -39,7 +39,10 @@ import static java.util.zip.Deflater.BEST_COMPRESSION;
  * When compression is enabled, the payload following the header is wrapped in a {@link GZIPOutputStream GZIP} stream.
  * <p>
  * The stream must be {@linkplain #close() closed} after use to ensure all buffered bits are flushed to the underlying
- * output stream.
+ * output stream. Values must be read back with the corresponding methods of {@link PackInputStream}, in the same order
+ * and with the same bit widths as they were written.
+ * <p>
+ * Instances are not thread safe.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
@@ -49,13 +52,21 @@ import static java.util.zip.Deflater.BEST_COMPRESSION;
  */
 public class PackOutputStream implements Closeable
 {
+  /** Stream the packed data is written to; replaced by a GZIP stream after the header, if compressed. */
   private @NotNull OutputStream stream;
+
+  /** Position of the next bit to write within {@link #b}, from {@code 7} (most significant) down to {@code 0}. */
   private int bit = 7;
+
+  /** Partially written byte, holding the bits not yet written to {@link #stream}. */
   private byte b;
 
 
   /**
    * Creates a new pack output stream with default configuration and the given compression setting.
+   * <p>
+   * The default configuration has compression support enabled, no magic bytes and no versioning. It matches the
+   * configuration used by {@link PackInputStream#PackInputStream(java.io.InputStream)}.
    *
    * @param compress  {@code true} to enable GZIP compression for the payload
    * @param stream    the underlying output stream to write to, not {@code null}
@@ -71,11 +82,12 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Creates a new pack output stream with the given configuration and version number. Compression is determined by
-   * the pack configuration.
+   * Creates a new pack output stream with the given configuration and version number.
+   * <p>
+   * The payload is compressed if the pack configuration supports compression.
    *
    * @param packConfig  pack configuration, not {@code null}
-   * @param version     the version number to write to the header
+   * @param version     the version number to write to the header; ignored if versioning is disabled
    * @param stream      the underlying output stream to write to, not {@code null}
    *
    * @throws IOException               if an I/O error occurs while writing the header
@@ -89,8 +101,9 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Creates a new pack output stream with the given configuration, using the lowest configured version number and the
-   * configured compression setting.
+   * Creates a new pack output stream with the given configuration, using the lowest configured version number.
+   * <p>
+   * The payload is compressed if the pack configuration supports compression.
    *
    * @param packConfig  pack configuration, not {@code null}
    * @param stream      the underlying output stream to write to, not {@code null}
@@ -104,8 +117,8 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Creates a new pack output stream with the given configuration and compression setting, using the lowest
-   * configured version number.
+   * Creates a new pack output stream with the given configuration and compression setting, using the lowest configured
+   * version number.
    *
    * @param packConfig  pack configuration, not {@code null}
    * @param compress    {@code true} to enable GZIP compression for the payload
@@ -125,14 +138,13 @@ public class PackOutputStream implements Closeable
    * Creates a new pack output stream with full control over configuration, version number, and compression.
    *
    * @param packConfig  pack configuration, not {@code null}
-   * @param version     the version number to write to the header
+   * @param version     the version number to write to the header; ignored if versioning is disabled
    * @param compress    {@code true} to enable GZIP compression for the payload
    * @param stream      the underlying output stream to write to, not {@code null}
    *
    * @throws IOException               if an I/O error occurs while writing the header
-   * @throws IllegalArgumentException  if compression is requested but not supported by the
-   *                                   configuration, or if the version number is outside the
-   *                                   configured range
+   * @throws IllegalArgumentException  if compression is requested but not supported by the configuration, or if the
+   *                                   version number is outside the configured range
    */
   @Contract(mutates = "param4,io")
   public PackOutputStream(@NotNull PackConfig packConfig, @Range(from = 0, to = MAX_VALUE) int version,
@@ -174,7 +186,7 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Write a boolean value to the output stream.
+   * Writes a boolean value to the output stream, using a single bit.
    *
    * @param value  boolean value to write
    *
@@ -196,13 +208,14 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Write an enumerated value to the output stream.
+   * Writes an enumerated value to the output stream, using the specified number of bits for its ordinal.
    *
    * @param value     enumerated value to write, not {@code null}
-   * @param bitWidth  number of bits to use for the enumerated value
+   * @param bitWidth  number of bits to use for the enumerated value (1..16)
+   * @param <T>       the enum type
    *
-   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16 or if the ordinal of the
-   *                                   enumerated value exceeds the {@code bitWidth}
+   * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 1..16 or if the ordinal of the enumerated
+   *                                   value exceeds the {@code bitWidth}
    * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
@@ -224,7 +237,7 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Write an enumerated value to the output stream.
+   * Writes an enumerated value to the output stream, using the bit width calculation of versions prior to 0.3.0.
    * <p>
    * This method was named {@code writeEnum} in versions prior to 0.3.0 but has been renamed because it does not
    * calculate the bit width correctly. Use {@link #writeEnum(Enum)} instead, which correctly determines the minimum
@@ -234,8 +247,11 @@ public class PackOutputStream implements Closeable
    * {@link #writeEnum(Enum)}.
    *
    * @param value  enumerated value to write, not {@code null}
+   * @param <T>    the enum type
    *
    * @throws IOException  if an I/O error occurs
+   *
+   * @since 0.3.0
    *
    * @deprecated Use {@link #writeEnum(Enum)} instead, which correctly calculates the bit width.
    */
@@ -251,13 +267,14 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Write an enumerated value to the output stream. The bit width is automatically derived from the number of constants
-   * in the enum type.
+   * Writes an enumerated value to the output stream. The bit width is automatically derived from the number of
+   * constants in the enum type.
    * <p>
    * This method replaces the previous {@code writeEnum(Enum)} implementation (now available as
    * {@link #writeEnumOld(Enum)}) which did not calculate the bit width correctly.
    *
    * @param value  enumerated value to write, not {@code null}
+   * @param <T>    the enum type
    *
    * @throws IOException  if an I/O error occurs
    *
@@ -284,7 +301,7 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Writes a 32-bit integer value to the output stream.
+   * Writes a 32-bit integer value to the output stream, using exactly 32 bits.
    *
    * @param value  the integer value to write
    *
@@ -297,7 +314,7 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Writes a 64-bit long value to the output stream.
+   * Writes a 64-bit long value to the output stream, using exactly 64 bits.
    *
    * @param value  the long value to write
    *
@@ -310,11 +327,15 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Writes a string value to the output stream using a compact modified UTF-8 encoding, or {@code null}.
+   * Writes a string value, which may be {@code null}, to the output stream using a compact modified UTF-8 encoding.
+   * <p>
+   * The length of the string is written as a prefix whose size depends on the length, so short strings take up less
+   * space. The encoded string must not exceed 65535 bytes; strings consisting of ASCII characters only (except U+0000)
+   * use one byte per character.
    *
    * @param string  the string to write, or {@code null}
    *
-   * @throws IllegalArgumentException  if the encoded string exceeds the maximum supported length
+   * @throws IllegalArgumentException  if the encoded string exceeds the maximum supported length of 65535 bytes
    * @throws IOException               if an I/O error occurs
    */
   @Contract(mutates = "this,io")
@@ -380,6 +401,8 @@ public class PackOutputStream implements Closeable
 
   /**
    * Writes a small unsigned value (0..255) using a variable-width encoding that favors smaller values.
+   * <p>
+   * Values 0..7 take 4 bits, values 8..15 take 5 bits and all other values take 10 bits.
    *
    * @param value  unsigned value (0..255)
    *
@@ -489,8 +512,8 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Flushes any partially written byte to the underlying stream, padding the remaining bits with zeros to reach
-   * byte alignment.
+   * Writes any partially written byte to the underlying stream, padding the remaining bits with zeros to reach byte
+   * alignment.
    *
    * @throws IOException  if an I/O error occurs
    */
@@ -507,7 +530,10 @@ public class PackOutputStream implements Closeable
 
 
   /**
-   * Flushes any buffered bits, then flushes and closes the underlying output stream.
+   * Closes this pack output stream and the underlying output stream.
+   * <p>
+   * Any buffered bits are written first (padded with zeros to a full byte), and a compressed payload is finished. The
+   * underlying output stream is flushed before it is closed.
    *
    * @throws IOException  if an I/O error occurs
    */

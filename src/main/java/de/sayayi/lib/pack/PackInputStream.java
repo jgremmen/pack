@@ -36,6 +36,12 @@ import static java.lang.Math.max;
  * <p>
  * When compression is detected in the header, the payload following the header is transparently decompressed using a
  * {@link GZIPInputStream GZIP} stream.
+ * <p>
+ * Values must be read with the methods corresponding to those of {@link PackOutputStream} that were used to write them,
+ * in the same order and with the same bit widths. Values that are not needed can be skipped using the {@code skip...}
+ * methods.
+ * <p>
+ * Instances are not thread safe.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
@@ -45,16 +51,27 @@ import static java.lang.Math.max;
  */
 public class PackInputStream implements Closeable
 {
+  /** Stream the packed data is read from; replaced by a GZIP stream after the header, if compressed. */
   private @NotNull InputStream stream;
+
+  /** Whether the payload is compressed, as read from the stream header. */
   private final boolean compressed;
+
+  /** Version number read from the stream header, or {@code null} if versioning is disabled. */
   private final Integer version;
+
+  /** Position of the next bit to read within {@link #b}, or {@code -1} if all bits of {@link #b} have been read. */
   private int bit = -1;
+
+  /** Byte currently being read bit by bit. */
   private byte b;
 
 
   /**
-   * Creates a new pack input stream with default configuration (compression support enabled, no magic bytes,
-   * no versioning).
+   * Creates a new pack input stream with default configuration (compression support enabled, no magic bytes, no
+   * versioning).
+   * <p>
+   * This matches the configuration used by {@link PackOutputStream#PackOutputStream(boolean, java.io.OutputStream)}.
    *
    * @param stream  the underlying input stream to read from, not {@code null}
    *
@@ -74,7 +91,8 @@ public class PackInputStream implements Closeable
    * @param packConfig  pack configuration defining the expected header format, not {@code null}
    * @param stream      the underlying input stream to read from, not {@code null}
    *
-   * @throws IOException  if an I/O error occurs while reading the header or if the magic bytes do not match
+   * @throws IOException  if an I/O error occurs while reading the header, if the magic bytes do not match or if the
+   *                      stream ends before the header is complete
    */
   @Contract(mutates = "param2,io")
   public PackInputStream(@NotNull PackConfig packConfig, @NotNull InputStream stream) throws IOException
@@ -126,7 +144,7 @@ public class PackInputStream implements Closeable
   /**
    * Returns the version number read from the pack stream header.
    *
-   * @return  the version number, or empty if versioning is not configured
+   * @return  the version number, or an empty optional if versioning is disabled, never {@code null}
    */
   @Contract(pure = true)
   public @NotNull OptionalInt getVersion() {
@@ -151,7 +169,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Skips a single boolean value in the stream.
+   * Skips a single boolean value in the stream, as written by {@link PackOutputStream#writeBoolean(boolean)}.
    *
    * @throws IOException  if an I/O error occurs
    */
@@ -189,7 +207,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Reads an enumerated value from the stream.
+   * Reads an enumerated value from the stream, using the bit width calculation of versions prior to 0.3.0.
    * <p>
    * This method was named {@code readEnum} in versions prior to 0.3.0 but has been renamed because it does not
    * calculate the bit width correctly. Use {@link #readEnum(Class)} instead, which correctly determines the minimum
@@ -204,6 +222,8 @@ public class PackInputStream implements Closeable
    * @return  the enum constant read, never {@code null}
    *
    * @throws IOException  if an I/O error occurs or if the ordinal read is not valid for the enum type
+   *
+   * @since 0.3.0
    *
    * @deprecated Use {@link #readEnum(Class)} instead, which correctly calculates the bit width.
    */
@@ -221,8 +241,8 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Reads an enumerated value from the stream. The bit width is automatically derived from the number of constants
-   * in the enum type.
+   * Reads an enumerated value from the stream. The bit width is automatically derived from the number of constants in
+   * the enum type.
    * <p>
    * This method replaces the previous {@code readEnum(Class)} implementation (now available as
    * {@link #readEnumOld(Class)}) which did not calculate the bit width correctly.
@@ -257,6 +277,8 @@ public class PackInputStream implements Closeable
    * @return  the enum constant, never {@code null}
    *
    * @throws IOException  if the ordinal is not valid for the enum type
+   *
+   * @since 0.3.2
    */
   @Contract(pure = true)
   private static <T extends Enum<T>> @NotNull T toEnum(@NotNull Class<T> enumType, @NotNull T[] enums, int ordinal)
@@ -270,7 +292,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Skips an enumerated value in the stream.
+   * Skips an enumerated value in the stream, using the bit width calculation of versions prior to 0.3.0.
    * <p>
    * This method was named {@code skipEnum} in versions prior to 0.3.0 but has been renamed because it does not
    * calculate the bit width correctly. Use {@link #skipEnum(Class)} instead, which correctly determines the minimum
@@ -283,6 +305,8 @@ public class PackInputStream implements Closeable
    * @param <T>       the enum type
    *
    * @throws IOException  if an I/O error occurs
+   *
+   * @since 0.3.0
    *
    * @deprecated Use {@link #skipEnum(Class)} instead, which correctly calculates the bit width.
    */
@@ -298,8 +322,8 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Skips an enumerated value in the stream. The bit width is automatically derived from the number of constants in
-   * the enum type.
+   * Skips an enumerated value in the stream. The bit width is automatically derived from the number of constants in the
+   * enum type.
    * <p>
    * This method replaces the previous {@code skipEnum(Class)} implementation (now available as
    * {@link #skipEnumOld(Class)}) which did not calculate the bit width correctly.
@@ -392,9 +416,9 @@ public class PackInputStream implements Closeable
   /**
    * Reads a string value from the stream using compact modified UTF-8 encoding.
    *
-   * @return  the string read, or {@code null}
+   * @return  the string read, or {@code null} if a {@code null} string was written
    *
-   * @throws UTFDataFormatException  if the UTF-8 data is malformed
+   * @throws UTFDataFormatException  if the UTF-8 data is malformed or does not match the encoded length
    * @throws IOException             if an I/O error occurs
    */
   @Contract(mutates = "this,io")
@@ -470,7 +494,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Skips a string value in the stream.
+   * Skips a string value in the stream, as written by {@link PackOutputStream#writeString(String)}.
    *
    * @throws IOException  if an I/O error occurs
    */
@@ -527,7 +551,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Skips a variable-width encoded small value in the stream.
+   * Skips a small value in the stream, as written by {@link PackOutputStream#writeSmallVar(int)}.
    *
    * @throws IOException  if an I/O error occurs
    */
@@ -587,11 +611,12 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Reads a value using exactly the specified number of bits (9..64).
+   * Reads an unsigned value using exactly the specified number of bits (9..64).
    *
    * @param bitWidth  number of bits to read (9..64)
    *
-   * @return  the value read
+   * @return  the value read, in the range 0..2<sup>bitWidth</sup>-1 for a {@code bitWidth} below 64; for a
+   *          {@code bitWidth} of 64, all values are possible
    *
    * @throws IllegalArgumentException  if {@code bitWidth} is not in the range 9..64
    * @throws IOException               if an I/O error occurs
@@ -632,10 +657,11 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Ensures that a byte of data is available for bit-level reading. If the current byte has been fully consumed,
-   * the next byte is read from the underlying stream.
+   * Ensures that a byte of data is available for bit-level reading. If the current byte has been fully consumed, the
+   * next byte is read from the underlying stream.
    *
-   * @throws IOException  if an I/O error occurs
+   * @throws EOFException  if the end of the stream is reached unexpectedly
+   * @throws IOException   if an I/O error occurs
    */
   @Contract(mutates = "this,io")
   protected void assertData() throws IOException
@@ -661,8 +687,11 @@ public class PackInputStream implements Closeable
 
   /**
    * Skips the specified number of bits in the stream.
+   * <p>
+   * This can be used to skip values written with a fixed bit width, such as
+   * {@link PackOutputStream#writeSmall(int, int)} or {@link PackOutputStream#writeLarge(long, int)}.
    *
-   * @param bitWidth  number of bits to skip
+   * @param bitWidth  number of bits to skip, not negative
    *
    * @throws IllegalArgumentException  if {@code bitWidth} is negative
    * @throws IOException               if an I/O error occurs
@@ -693,7 +722,7 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Closes the underlying input stream.
+   * Closes this pack input stream and the underlying input stream.
    *
    * @throws IOException  if an I/O error occurs
    */
