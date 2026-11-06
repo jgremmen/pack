@@ -255,6 +255,38 @@ class PackStreamTest
   }
 
 
+  @SuppressWarnings("unused")
+  private enum FF
+  {
+    F1 { @Override int value() { return 1; } },
+    F2,
+    F3 { @Override int value() { return 3; } };
+
+    int value() {
+      return 0;
+    }
+  }
+
+
+  @Test
+  @DisplayName("Pack/unpack enums with constant-specific class bodies")
+  @SuppressWarnings("removal")
+  void packEnumWithClassBody() throws IOException
+  {
+    final var enums = FF.values();
+
+    packUnpack(1000,
+        () -> enums[RANDOM.nextInt(enums.length)],
+        PackOutputStream::writeEnum,
+        packStream -> packStream.readEnum(FF.class));
+
+    packUnpack(1000,
+        () -> enums[RANDOM.nextInt(enums.length)],
+        PackOutputStream::writeEnumOld,
+        packStream -> packStream.readEnumOld(FF.class));
+  }
+
+
   @Test
   @DisplayName("Pack/unpack strings")
   void packString() throws IOException

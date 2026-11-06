@@ -244,15 +244,15 @@ public class PackOutputStream implements Closeable
   @SuppressWarnings("DeprecatedIsStillUsed")
   public <T extends Enum<T>> void writeEnumOld(@NotNull T value) throws IOException
   {
-    var n = value.getClass().getEnumConstants().length;
+    final var n = value.getDeclaringClass().getEnumConstants().length;
 
     writeEnum(value, bitCount(n | (n >> 1) | (n >> 2) | (n >> 4) | (n >> 8)));
   }
 
 
   /**
-   * Write an enumerated value to the output stream. The bit width is automatically derived from the number of
-   * constants in the enum type.
+   * Write an enumerated value to the output stream. The bit width is automatically derived from the number of constants
+   * in the enum type.
    * <p>
    * This method replaces the previous {@code writeEnum(Enum)} implementation (now available as
    * {@link #writeEnumOld(Enum)}) which did not calculate the bit width correctly.
@@ -265,7 +265,7 @@ public class PackOutputStream implements Closeable
    */
   @Contract(mutates = "this,io")
   public <T extends Enum<T>> void writeEnum(@NotNull T value) throws IOException {
-    writeEnum(value, max(SIZE - numberOfLeadingZeros(value.getClass().getEnumConstants().length - 1), 1));
+    writeEnum(value, max(SIZE - numberOfLeadingZeros(value.getDeclaringClass().getEnumConstants().length - 1), 1));
   }
 
 
