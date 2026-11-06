@@ -29,6 +29,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.nio.file.Path;
@@ -114,6 +115,41 @@ class TikaDetectorTest
 
 
   @Test
+  @DisplayName("Detect compressed stream within mark limit")
+  void detectWithinMarkLimit() throws IOException
+  {
+    // version 85 of 1..100 is encoded as a 10-bit SmallVar
+    assertDetectedWithinMarkLimit(PACK_CONFIG, 85);
+
+    // version range requiring 31 bits
+    assertDetectedWithinMarkLimit(new PackConfig
+        .Builder()
+        .withVersionRange(0, 1 << 30)
+        .withCompressionSupport(true)
+        .withMagic("MyTeSt\u0007**")
+        .build(), 1 << 30);
+  }
+
+
+  private static void assertDetectedWithinMarkLimit(PackConfig packConfig, int version) throws IOException
+  {
+    final var byteStream = new ByteArrayOutputStream();
+
+    try(var packStream = new PackOutputStream(packConfig, version, true, byteStream)) {
+      packStream.writeInt(42);
+    }
+
+    final var input = new StrictMarkInputStream(byteStream.toByteArray());
+    final var mediaType = new AbstractTika3Detector(packConfig, "application/my-bitpack") {}
+        .detect(input, new Metadata());
+
+    assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
+    assertEquals(String.valueOf(version), mediaType.getParameters().get("version"));
+    assertEquals("true", mediaType.getParameters().get("compress"));
+  }
+
+
+  @Test
   @DisplayName("Detect without compression support")
   void detectWithoutCompressionSupport() throws IOException
   {
@@ -162,6 +198,77 @@ class TikaDetectorTest
   @DisplayName("Detect incomplete stream")
   void detectIncomplete() throws IOException {
     assertEquals(TEXT_PLAIN, detector.detect(new ByteArrayInputStream("MyTeSt".getBytes(US_ASCII)), new Metadata()));
+  }
+
+
+
+
+  /**
+   * Input stream that invalidates its mark once more than {@code readLimit} bytes have been read, like a
+   * {@link java.io.BufferedInputStream} that has to refill its buffer.
+   */
+  private static final class StrictMarkInputStream extends FilterInputStream
+  {
+    private long pos;
+    private long markPos = -1;
+    private int markLimit;
+
+
+    private StrictMarkInputStream(byte[] data) {
+      super(new ByteArrayInputStream(data));
+    }
+
+
+    @Override
+    public int read() throws IOException
+    {
+      final var b = super.read();
+      if (b >= 0)
+        pos++;
+
+      return b;
+    }
+
+
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException
+    {
+      final var n = super.read(b, off, len);
+      if (n > 0)
+        pos += n;
+
+      return n;
+    }
+
+
+    @Override
+    public long skip(long n) throws IOException
+    {
+      final var skipped = super.skip(n);
+      pos += skipped;
+
+      return skipped;
+    }
+
+
+    @Override
+    public synchronized void mark(int readLimit)
+    {
+      super.mark(readLimit);
+      markPos = pos;
+      markLimit = readLimit;
+    }
+
+
+    @Override
+    public synchronized void reset() throws IOException
+    {
+      if (markPos < 0 || pos - markPos > markLimit)
+        throw new IOException("mark invalidated: read " + (pos - markPos) + " bytes, limit " + markLimit);
+
+      super.reset();
+      pos = markPos;
+    }
   }
 
 

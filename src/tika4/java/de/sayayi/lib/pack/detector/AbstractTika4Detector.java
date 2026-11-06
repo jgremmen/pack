@@ -129,8 +129,8 @@ public abstract class AbstractTika4Detector implements Detector
   {
     if (input != null)
     {
-      // worst case: magic.length + (1bit (compression) + versionBits + 7) / 8 + 10 bytes (zip header)
-      input.mark(packConfig.getMagic().length + 11 + packConfig.getVersionBits() / 8);
+      // worst case: magic.length + 4 bytes (1 bit compression + up to 31 bits version) + 10 bytes (gzip header)
+      input.mark(packConfig.getMagic().length + 14);
       input.setCloseShield();
 
       try(var packStream = new PackInputStream(packConfig, input)) {
