@@ -130,6 +130,22 @@ class TikaDetectorTest
 
 
   @Test
+  @DisplayName("Reject configuration without magic bytes")
+  void rejectConfigWithoutMagic()
+  {
+    final var packConfig = new PackConfig
+        .Builder()
+        .withVersionRange(1, 100)
+        .withCompressionSupport()
+        .build();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AbstractTika3Detector(packConfig, "application/my-bitpack") {});
+  }
+
+
+  @Test
   @DisplayName("Detect empty stream")
   void detectEmpty() throws IOException {
     assertEquals(OCTET_STREAM, detector.detect(new ByteArrayInputStream(new byte[0]), new Metadata()));

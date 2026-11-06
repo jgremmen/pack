@@ -89,6 +89,22 @@ class FileTypeDetectorTest
 
 
   @Test
+  @DisplayName("Reject configuration without magic bytes")
+  void rejectConfigWithoutMagic()
+  {
+    final var packConfig = new PackConfig
+        .Builder()
+        .withVersionRange(1, 100)
+        .withCompressionSupport()
+        .build();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AbstractFileTypeDetector(packConfig, "application/my-bitpack") {});
+  }
+
+
+  @Test
   @DisplayName("Detect non-pack file without leaking file handles")
   void detectNonPack() throws IOException
   {

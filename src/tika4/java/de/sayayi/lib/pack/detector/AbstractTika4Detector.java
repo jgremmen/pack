@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.OptionalInt;
 
+import static java.util.Objects.requireNonNull;
 import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 
 
@@ -86,12 +87,19 @@ public abstract class AbstractTika4Detector implements Detector
   /**
    * Creates a new Tika detector with the given pack configuration and base MIME type.
    *
-   * @param packConfig  pack configuration used to read and validate the pack stream, not {@code null}
-   * @param mimeType    base MIME type to return when a pack file is detected (e.g.
-   *                    {@code "application/x-mypack"}), not {@code null}
+   * @param packConfig  pack configuration used to read and validate the pack stream, not {@code null}. The
+   *                    configuration must define magic bytes, as a detector without magic bytes would claim almost any
+   *                    file
+   * @param mimeType    base MIME type to return when a pack file is detected (e.g. {@code "application/x-mypack"}), not
+   *                    {@code null}
+   *
+   * @throws IllegalArgumentException  if {@code packConfig} does not define magic bytes
    */
   protected AbstractTika4Detector(@NotNull PackConfig packConfig, @NotNull String mimeType)
   {
+    if (requireNonNull(packConfig, "packConfig must not be null").getMagic().length == 0)
+      throw new IllegalArgumentException("packConfig must define magic bytes for file type detection");
+
     this.packConfig = packConfig;
     this.mimeType = MediaType.parse(mimeType);
   }

@@ -25,6 +25,7 @@ import java.nio.file.spi.FileTypeDetector;
 import java.util.OptionalInt;
 
 import static java.nio.file.Files.newInputStream;
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -76,12 +77,19 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
   /**
    * Creates a new file type detector with the given pack configuration and base MIME type.
    *
-   * @param packConfig  pack configuration used to read and validate the pack stream, not {@code null}
-   * @param mimeType    base MIME type to return when a pack file is detected (e.g.
-   *                    {@code "application/x-mypack"}), not {@code null}
+   * @param packConfig  pack configuration used to read and validate the pack stream, not {@code null}. The
+   *                    configuration must define magic bytes, as a detector without magic bytes would claim almost any
+   *                    file
+   * @param mimeType    base MIME type to return when a pack file is detected (e.g. {@code "application/x-mypack"}), not
+   *                    {@code null}
+   *
+   * @throws IllegalArgumentException  if {@code packConfig} does not define magic bytes
    */
   protected AbstractFileTypeDetector(@NotNull PackConfig packConfig, @NotNull String mimeType)
   {
+    if (requireNonNull(packConfig, "packConfig must not be null").getMagic().length == 0)
+      throw new IllegalArgumentException("packConfig must define magic bytes for file type detection");
+
     this.packConfig = packConfig;
     this.mimeType = mimeType;
   }

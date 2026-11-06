@@ -32,6 +32,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 /**
@@ -99,6 +100,22 @@ class Tika4DetectorTest
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
     assertEquals("12", mediaType.getParameters().get("version"));
     assertFalse(mediaType.getParameters().containsKey("compress"));
+  }
+
+
+  @Test
+  @DisplayName("Reject configuration without magic bytes")
+  void rejectConfigWithoutMagic()
+  {
+    final var packConfig = new PackConfig
+        .Builder()
+        .withVersionRange(1, 100)
+        .withCompressionSupport()
+        .build();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AbstractTika4Detector(packConfig, "application/my-bitpack") {});
   }
 
 
