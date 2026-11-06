@@ -24,8 +24,8 @@ import org.jetbrains.annotations.NotNull;
  * {@link org.apache.tika.detect.Detector Apache Tika detection API}.
  * <p>
  * This class is compiled against and intended to be used with Apache Tika 3. For Apache Tika 4, the separate class
- * {@code AbstractTika4Detector} in the same package is provided, which is compiled against Tika 4 and is binary
- * incompatible with this class.
+ * {@code AbstractTika4Detector} in the same package and artifact is provided, which is compiled against Tika 4 and is
+ * binary incompatible with this class.
  * <p>
  * Subclasses provide a specific {@link PackConfig} and base MIME type. Detection is handled by the deprecated
  * {@link AbstractTikaDetector} superclass, which attempts to read the input as a pack stream and returns an annotated
@@ -56,6 +56,13 @@ import org.jetbrains.annotations.NotNull;
  * <pre>
  * com.example.MyPackTikaDetector
  * </pre>
+ * <p>
+ * Tika reads {@code META-INF/services} files itself and ignores {@code provides} declarations, so the file is also
+ * needed if the application is a named module on the module path. In that case, the package containing the detector
+ * must be exported, at least to {@code org.apache.tika.core}, so that Tika can instantiate the detector:
+ * <pre>{@code
+ * exports com.example to org.apache.tika.core;
+ * }</pre>
  * <p>
  * Once registered, Tika's detection framework will automatically use your detector and return an annotated
  * {@link org.apache.tika.mime.MediaType MediaType} such as {@code application/x-mypack;version=3;compress=true}.

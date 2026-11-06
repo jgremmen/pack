@@ -33,10 +33,10 @@ compression, and a variety of data types — all packed using the smallest possi
 
 ```kotlin
 dependencies {
-  implementation("de.sayayi.lib:pack:0.2.0")
+  implementation("de.sayayi.lib:pack:0.3.1")
 
-  // Optional: only required for Apache Tika detector support
-  implementation("org.apache.tika:tika-core:2.9.2")
+  // Optional: only required for Apache Tika detector support (Tika 3.x or 4.x)
+  implementation("org.apache.tika:tika-core:3.3.3")
 }
 ```
 
@@ -46,14 +46,14 @@ dependencies {
 <dependency>
   <groupId>de.sayayi.lib</groupId>
   <artifactId>pack</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.1</version>
 </dependency>
 
-<!-- Optional: only required for Apache Tika detector support -->
+<!-- Optional: only required for Apache Tika detector support (Tika 3.x or 4.x) -->
 <dependency>
   <groupId>org.apache.tika</groupId>
   <artifactId>tika-core</artifactId>
-  <version>2.9.2</version>
+  <version>3.3.3</version>
   <optional>true</optional>
 </dependency>
 ```
@@ -143,10 +143,32 @@ All write methods have corresponding `read` and `skip` counterparts on `PackInpu
 | `noVersion()`            | Disables versioning entirely                                                  |
 | `withCompressionSupport` | Enables the compression flag in the header                                    |
 
+### Header layout and compatibility
+
+The header consists of the magic bytes, a compression flag (1 bit, only with compression support)
+and the version number (only with a version range). The encoding of the version number depends on
+the number of versions in the range:
+
+| Versions in range | Version encoding                                          |
+|-------------------|-----------------------------------------------------------|
+| 1                 | not written                                               |
+| 2–256             | variable width (4, 5 or 10 bits, as with `writeSmallVar`) |
+| more than 256     | fixed width, `versionBits` bits                           |
+
+The header layout is therefore part of the file format. Once files have been written, the version
+range may only be extended within the same class: a single-version range can't get a version field
+later, a range must not grow past 256 versions, and a range with more than 256 versions must keep
+its bit width. Otherwise existing files are misread. If the format is expected to evolve, start
+with a range that leaves room for future versions, for example `withVersionRange(1, 100)`.
+
 ## File Type Detection
 
-The `de.sayayi.lib.pack.detector` package provides two abstract base classes for content-type
-detection of pack files:
+The `de.sayayi.lib.pack.detector` package provides abstract base classes for content-type
+detection of pack files. A detector identifies pack files by their magic bytes, so the pack
+configuration passed to a detector must define them. Since 0.3.2, the constructors throw an
+`IllegalArgumentException` otherwise.
+
+Detectors hold no mutable state and can be used by multiple threads concurrently.
 
 ### Java NIO SPI
 
@@ -162,12 +184,26 @@ public class MyPackDetector extends AbstractFileTypeDetector
 }
 ```
 
-### Apache Tika
-
-Extend `AbstractTikaDetector` (requires `tika-core` on the classpath):
+If the application is a named module on the module path, the `META-INF/services` file is
+ignored. Declare the provider in `module-info.java` instead:
 
 ```java
-public class MyPackTikaDetector extends AbstractTikaDetector 
+provides java.nio.file.spi.FileTypeDetector with com.example.MyPackDetector;
+```
+
+### Apache Tika
+
+The Tika detector API is binary incompatible between Tika 3 and Tika 4. The library therefore
+contains one base class for each version, both in the same package and artifact. Extend the class
+that matches the `tika-core` version on your classpath:
+
+| Tika version | Base class              |
+|--------------|-------------------------|
+| 3.x          | `AbstractTika3Detector` |
+| 4.x          | `AbstractTika4Detector` |
+
+```java
+public class MyPackTikaDetector extends AbstractTika3Detector
 {
   public MyPackTikaDetector() {
     super(MY_PACK_CONFIG, "application/x-mypack");
@@ -175,7 +211,18 @@ public class MyPackTikaDetector extends AbstractTikaDetector
 }
 ```
 
-Both detectors return annotated MIME types with optional `version` and `compress` parameters, e.g.
+Register the detector via `META-INF/services/org.apache.tika.detect.Detector`. `AbstractTikaDetector`
+is deprecated since 0.3.1 and will be removed; extend `AbstractTika3Detector` instead.
+
+Tika reads `META-INF/services` files itself and ignores `provides` declarations, so the file is
+also needed in a named module. In that case, the package containing the detector must be exported,
+at least to `org.apache.tika.core`:
+
+```java
+exports com.example to org.apache.tika.core;
+```
+
+All detectors return annotated MIME types with optional `version` and `compress` parameters, e.g.
 `application/x-mypack;version=3;compress=true`.
 
 ## Building from Source

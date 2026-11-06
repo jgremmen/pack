@@ -62,6 +62,12 @@ import static java.util.Objects.requireNonNull;
  * com.example.MyPackDetector
  * </pre>
  * <p>
+ * If the application is a named module on the module path, the {@code META-INF/services} file is ignored. Declare the
+ * provider in the application's {@code module-info.java} instead:
+ * <pre>{@code
+ * provides java.nio.file.spi.FileTypeDetector with com.example.MyPackDetector;
+ * }</pre>
+ * <p>
  * Once registered, {@link java.nio.file.Files#probeContentType(Path)} will automatically use your detector and return
  * an annotated MIME type such as {@code application/x-mypack;version=3;compress=true}.
  *
