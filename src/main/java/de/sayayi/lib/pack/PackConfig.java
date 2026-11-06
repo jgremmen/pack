@@ -29,8 +29,8 @@ import static java.util.Objects.requireNonNull;
 /**
  * Configuration for reading and writing pack streams.
  * <p>
- * A pack configuration defines the structure of a pack stream header, including the magic bytes used to identify
- * the format, the supported version range, and whether compression is enabled.
+ * A pack configuration defines the structure of a pack stream header, including the magic bytes used to identify the
+ * format, the supported version range, and whether compression is enabled.
  * <p>
  * Use the {@link Builder} to create instances of this class.
  *
@@ -53,8 +53,8 @@ public class PackConfig
   /**
    * The lowest version number in the supported range.
    * <p>
-   * Together with {@link #versionBits}, this defines the full range of version numbers that can be encoded in the
-   * pack stream header. The highest version is {@code lowestVersionNumber + (2^versionBits - 1)}.
+   * Together with {@link #versionBits}, this defines the full range of version numbers that can be encoded in the pack
+   * stream header. The highest version is {@code lowestVersionNumber + (2^versionBits - 1)}.
    */
   protected final int lowestVersionNumber;
 
@@ -69,8 +69,8 @@ public class PackConfig
   /**
    * Whether this pack format supports compression.
    * <p>
-   * When {@code true}, a compression flag is included in the stream header to indicate whether the payload
-   * is compressed.
+   * When {@code true}, a compression flag is included in the stream header to indicate whether the payload is
+   * compressed.
    */
   protected final boolean compressionSupport;
 
@@ -78,15 +78,16 @@ public class PackConfig
   /**
    * Creates a new pack configuration.
    *
-   * @param magic               magic bytes used to identify the pack format
-   * @param lowestVersionNumber the lowest version number in the supported range
-   * @param versionBits         number of bits used to encode the version number ({@code 0} if versioning is disabled)
-   * @param compressionSupport  {@code true} if the pack format supports compression
+   * @param magic                magic bytes used to identify the pack format, not {@code null}. The array is copied, so
+   *                             later modifications to it do not affect this configuration
+   * @param lowestVersionNumber  the lowest version number in the supported range
+   * @param versionBits          number of bits used to encode the version number ({@code 0} if versioning is disabled)
+   * @param compressionSupport   {@code true} if the pack format supports compression
    */
   protected PackConfig(byte @NotNull [] magic, int lowestVersionNumber,
                        @Range(from = 0, to = 31) int versionBits, boolean compressionSupport)
   {
-    this.magic = requireNonNull(magic);
+    this.magic = requireNonNull(magic, "magic must not be null").clone();
     this.lowestVersionNumber = lowestVersionNumber;
     this.versionBits = versionBits;
     this.compressionSupport = compressionSupport;
@@ -153,8 +154,8 @@ public class PackConfig
   /**
    * A builder for creating {@link PackConfig} instances.
    * <p>
-   * The builder provides a fluent API to configure magic bytes, version range, and compression support. By default,
-   * the configuration has no magic bytes, no versioning, and compression disabled.
+   * The builder provides a fluent API to configure magic bytes, version range, and compression support. By default, the
+   * configuration has no magic bytes, no versioning, and compression disabled.
    */
   public static class Builder
   {
@@ -180,7 +181,8 @@ public class PackConfig
 
 
     /**
-     * Sets the magic bytes used to identify the pack format.
+     * Sets the magic bytes used to identify the pack format. The array is copied, so later modifications to it do not
+     * affect this builder or the configurations it builds.
      *
      * @param magic  magic bytes, not {@code null}
      *
@@ -189,7 +191,7 @@ public class PackConfig
     @Contract("_ -> this")
     public @NotNull Builder withMagic(byte @NotNull [] magic)
     {
-      this.magic = requireNonNull(magic, "magic must not be null");
+      this.magic = requireNonNull(magic, "magic must not be null").clone();
       return this;
     }
 
@@ -249,8 +251,8 @@ public class PackConfig
 
 
     /**
-     * Sets the supported version range. The number of bits required to encode the version is automatically derived
-     * from the range.
+     * Sets the supported version range. The number of bits required to encode the version is automatically derived from
+     * the range.
      *
      * @param lowestVersion   the lowest supported version number, must not be negative
      * @param highestVersion  the highest supported version number, must be &ge; {@code lowestVersion}
