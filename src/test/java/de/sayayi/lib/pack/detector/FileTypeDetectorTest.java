@@ -15,6 +15,7 @@
  */
 package de.sayayi.lib.pack.detector;
 
+import com.sun.management.UnixOperatingSystemMXBean;
 import de.sayayi.lib.pack.PackConfig;
 import de.sayayi.lib.pack.PackOutputStream;
 import org.apache.tika.mime.MediaType;
@@ -26,9 +27,10 @@ import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.nio.file.Path;
 
-import static java.nio.file.Files.newOutputStream;
-import static java.nio.file.Files.probeContentType;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
+import static java.nio.file.Files.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 
 /**
@@ -65,6 +67,28 @@ class FileTypeDetectorTest
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
     assertEquals("12", mediaType.getParameters().get("version"));
     assertEquals("false", mediaType.getParameters().get("compress"));
+  }
+
+
+  @Test
+  @DisplayName("Detect non-pack file without leaking file handles")
+  void detectNonPack() throws IOException
+  {
+    assumeTrue(getOperatingSystemMXBean() instanceof UnixOperatingSystemMXBean,
+        "open file descriptor count not available");
+
+    final var os = (UnixOperatingSystemMXBean)getOperatingSystemMXBean();
+    final var textPath = tempDir.resolve("test.txt");
+    final var detector = new MyFileTypeDetector();
+
+    writeString(textPath, "this is not a pack file");
+
+    final var openFiles = os.getOpenFileDescriptorCount();
+
+    for(var n = 0; n < 100; n++)
+      assertNull(detector.probeContentType(textPath));
+
+    assertTrue(os.getOpenFileDescriptorCount() - openFiles < 10);
   }
 
 

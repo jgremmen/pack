@@ -100,7 +100,8 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
   @Override
   public String probeContentType(Path path)
   {
-    try(var packStream = new PackInputStream(packConfig, newInputStream(path))) {
+    try(var stream = newInputStream(path);
+        var packStream = new PackInputStream(packConfig, stream)) {
       return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
     } catch(Exception ignored) {
     }
