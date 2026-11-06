@@ -36,6 +36,11 @@ publishOnCentral {
 
 
 def snapshot = version.toString().endsWith('-SNAPSHOT')
+def optionalArtifactIds = configurations
+    .optionalApi
+    .dependencies
+    .collect { it.name }
+    .toSet()
 
 
 publishing {
@@ -45,12 +50,6 @@ publishing {
         inceptionYear = '2025'
 
         withXml {
-          def optionalArtifactIds = configurations.optionalApi
-              .resolvedConfiguration
-              .firstLevelModuleDependencies
-              .collect { it.moduleName }
-              .toSet()
-
           asNode().dependencies[0]?.dependency?.each { dependency ->
             if (dependency.artifactId.text() in optionalArtifactIds)
               dependency.appendNode('optional', 'true')
