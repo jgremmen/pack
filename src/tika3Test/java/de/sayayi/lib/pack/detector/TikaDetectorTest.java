@@ -37,8 +37,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.newOutputStream;
 import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 import static org.apache.tika.mime.MediaType.TEXT_PLAIN;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 /**
@@ -76,7 +75,8 @@ class TikaDetectorTest
       packStream.writeEnum(ElementType.LOCAL_VARIABLE);
     }
 
-    final var mediaType = detector.detect(new ByteArrayInputStream(byteStream.toByteArray()), new Metadata());
+    final var mediaType = detector
+        .detect(new ByteArrayInputStream(byteStream.toByteArray()), new Metadata());
 
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
     assertEquals("85", mediaType.getParameters().get("version"));
@@ -104,6 +104,28 @@ class TikaDetectorTest
       // stream must still be open and reset to its start
       assertArrayEquals(PACK_CONFIG.getMagic(), input.readNBytes(PACK_CONFIG.getMagic().length));
     }
+  }
+
+
+  @Test
+  @DisplayName("Detect without compression support")
+  void detectWithoutCompressionSupport() throws IOException
+  {
+    final var packConfig = new PackConfig
+        .Builder()
+        .withMagic("NoCoMpReSs")
+        .withVersionRange(1, 100)
+        .build();
+    final var byteStream = new ByteArrayOutputStream();
+
+    new PackOutputStream(packConfig, 12, byteStream).close();
+
+    final var mediaType = new AbstractTika3Detector(packConfig, "application/my-bitpack") {}
+        .detect(new ByteArrayInputStream(byteStream.toByteArray()), new Metadata());
+
+    assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
+    assertEquals("12", mediaType.getParameters().get("version"));
+    assertFalse(mediaType.getParameters().containsKey("compress"));
   }
 
 

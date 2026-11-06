@@ -71,6 +71,24 @@ class FileTypeDetectorTest
 
 
   @Test
+  @DisplayName("Detect without compression support")
+  void detectWithoutCompressionSupport() throws IOException
+  {
+    final var packConfig = new PackConfig.Builder().withMagic("NoCoMpReSs").withVersionRange(1, 100).build();
+    final var packPath = tempDir.resolve("test.pack");
+
+    new PackOutputStream(packConfig, 12, newOutputStream(packPath)).close();
+
+    final var mediaType = MediaType.parse(
+        new AbstractFileTypeDetector(packConfig, "application/my-bitpack") {}.probeContentType(packPath));
+
+    assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
+    assertEquals("12", mediaType.getParameters().get("version"));
+    assertFalse(mediaType.getParameters().containsKey("compress"));
+  }
+
+
+  @Test
   @DisplayName("Detect non-pack file without leaking file handles")
   void detectNonPack() throws IOException
   {

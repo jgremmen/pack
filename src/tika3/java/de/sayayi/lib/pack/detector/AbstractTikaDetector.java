@@ -121,7 +121,9 @@ public abstract class AbstractTikaDetector implements Detector
       input.mark(packConfig.getMagic().length + 11 + packConfig.getVersionBits() / 8);
 
       try(var packStream = new PackInputStream(packConfig, new CloseShieldInputStream(input))) {
-        return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
+        return buildAnnotatedMimeType(
+            packStream.getVersion(),
+            packConfig.isCompressionSupport() ? packStream.isCompressed() : null);
       } catch(Exception ignored) {
       } finally {
         input.reset();

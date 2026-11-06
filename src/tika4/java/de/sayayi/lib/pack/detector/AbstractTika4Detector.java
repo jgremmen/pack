@@ -119,13 +119,12 @@ public abstract class AbstractTika4Detector implements Detector
     {
       // worst case: magic.length + (1bit (compression) + versionBits + 7) / 8 + 10 bytes (zip header)
       input.mark(packConfig.getMagic().length + 11 + packConfig.getVersionBits() / 8);
-
-      // shield the stream from being closed by PackInputStream, since Tika detectors must not close the stream
-      // they are probing and TikaInputStream invalidates its mark once closed
       input.setCloseShield();
 
       try(var packStream = new PackInputStream(packConfig, input)) {
-        return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
+        return buildAnnotatedMimeType(
+            packStream.getVersion(),
+            packConfig.isCompressionSupport() ? packStream.isCompressed() : null);
       } catch(Exception ignored) {
       } finally {
         input.removeCloseShield();

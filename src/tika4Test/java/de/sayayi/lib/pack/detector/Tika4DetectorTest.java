@@ -31,6 +31,7 @@ import java.lang.annotation.ElementType;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.apache.tika.mime.MediaType.OCTET_STREAM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 
 /**
@@ -76,6 +77,28 @@ class Tika4DetectorTest
     assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
     assertEquals("85", mediaType.getParameters().get("version"));
     assertEquals("true", mediaType.getParameters().get("compress"));
+  }
+
+
+  @Test
+  @DisplayName("Detect without compression support")
+  void detectWithoutCompressionSupport() throws IOException
+  {
+    final var packConfig = new PackConfig
+        .Builder()
+        .withMagic("NoCoMpReSs")
+        .withVersionRange(1, 100)
+        .build();
+    final var byteStream = new ByteArrayOutputStream();
+
+    new PackOutputStream(packConfig, 12, byteStream).close();
+
+    final var mediaType = new AbstractTika4Detector(packConfig, "application/my-bitpack") {}
+        .detect(TikaInputStream.get(byteStream.toByteArray()), new Metadata(), new ParseContext());
+
+    assertEquals(MediaType.parse("application/my-bitpack"), mediaType.getBaseType());
+    assertEquals("12", mediaType.getParameters().get("version"));
+    assertFalse(mediaType.getParameters().containsKey("compress"));
   }
 
 

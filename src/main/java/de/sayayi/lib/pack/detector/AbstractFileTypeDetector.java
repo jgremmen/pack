@@ -102,7 +102,9 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
   {
     try(var stream = newInputStream(path);
         var packStream = new PackInputStream(packConfig, stream)) {
-      return buildAnnotatedMimeType(packStream.getVersion(), packStream.isCompressed());
+      return buildAnnotatedMimeType(
+          packStream.getVersion(),
+          packConfig.isCompressionSupport() ? packStream.isCompressed() : null);
     } catch(Exception ignored) {
     }
 
