@@ -25,10 +25,7 @@ tika-core = { group = 'org.apache.tika', name = 'tika-core', version.ref = 'tika
 tika4-core = { group = 'org.apache.tika', name = 'tika-core', version.ref = 'tika4' }
 tika-core-full = { group = 'org.apache.tika', name = 'tika-core', version.ref = 'tika-full' }
 
-publish-on-central-plugin = {
-    group = 'org.danilopianini.publish-on-central',
-    name = 'org.danilopianini.publish-on-central.gradle.plugin',
-    version.ref = 'publish-on-central' }
+publish-on-central-plugin = { group = 'org.danilopianini.publish-on-central', name = 'org.danilopianini.publish-on-central.gradle.plugin', version.ref = 'publish-on-central' }
 
 [plugins]
 test-logger = { id = 'com.adarshr.test-logger', version.ref = 'test-logger' }
