@@ -20,6 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -441,6 +443,39 @@ class PackStreamTest
     assertThrows(
         IllegalArgumentException.class,
         () -> unpack(0xff, 0xff).skip(-1));
+  }
+
+
+  @ParameterizedTest(name = "compressed = {0}")
+  @ValueSource(booleans = { false, true })
+  @DisplayName("Flush complete bytes without closing the stream")
+  void packFlush(boolean compress) throws IOException
+  {
+    // without compression support the header has no compression bit, so the payload starts byte aligned
+    final var packConfig = compress
+        ? PACK_CONFIG
+        : new PackConfig.Builder().noVersion().withMagic("MyTeSt\u0007**").build();
+    final var byteStream = new ByteArrayOutputStream();
+
+    try(var packStream = new PackOutputStream(packConfig, compress, byteStream)) {
+      packStream.writeLarge(0x0123_4567_89ab_cdefL, 64);
+      packStream.writeBoolean(true);  // partial byte, stays buffered
+      packStream.flush();
+
+      // everything written before the partial byte can be read from the flushed data
+      try(var unpackStream = new PackInputStream(packConfig, new ByteArrayInputStream(byteStream.toByteArray()))) {
+        assertEquals(compress, unpackStream.isCompressed());
+        assertEquals(0x0123_4567_89ab_cdefL, unpackStream.readLarge(64));
+      }
+
+      packStream.writeInt(42);
+    }
+
+    try(var unpackStream = new PackInputStream(packConfig, new ByteArrayInputStream(byteStream.toByteArray()))) {
+      assertEquals(0x0123_4567_89ab_cdefL, unpackStream.readLarge(64));
+      assertTrue(unpackStream.readBoolean());
+      assertEquals(42, unpackStream.readInt());
+    }
   }
 
 

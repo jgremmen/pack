@@ -20,8 +20,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Range;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static java.lang.Integer.*;
@@ -50,7 +52,7 @@ import static java.util.zip.Deflater.BEST_COMPRESSION;
  * @see PackInputStream
  * @see PackConfig
  */
-public class PackOutputStream implements Closeable
+public class PackOutputStream implements Closeable, Flushable
 {
   /** Stream the packed data is written to; replaced by a GZIP stream after the header, if compressed. */
   private @NotNull OutputStream stream;
@@ -178,7 +180,7 @@ public class PackOutputStream implements Closeable
       forceByteAlignment();
       stream.flush();
 
-      this.stream = new GZIPOutputStream(stream, 1024) {{
+      this.stream = new GZIPOutputStream(stream, 1024, true) {{
         def.setLevel(BEST_COMPRESSION);
       }};
     }
@@ -530,6 +532,27 @@ public class PackOutputStream implements Closeable
 
 
   /**
+   * Flushes this pack output stream and the underlying output stream.
+   * <p>
+   * All complete bytes written so far are passed to the underlying output stream. If the payload is compressed, the
+   * compressor is flushed with {@link java.util.zip.Deflater#SYNC_FLUSH SYNC_FLUSH}, so that the receiver can
+   * decompress all data written so far. Each such flush slightly reduces the compression ratio.
+   * <p>
+   * The bits of a partially written byte stay buffered until further writes complete the byte or the stream is
+   * {@linkplain #close() closed}.
+   *
+   * @throws IOException  if an I/O error occurs
+   *
+   * @since 0.3.2
+   */
+  @Override
+  @Contract(mutates = "this,io")
+  public void flush() throws IOException {
+    stream.flush();
+  }
+
+
+  /**
    * Closes this pack output stream and the underlying output stream.
    * <p>
    * Any buffered bits are written first (padded with zeros to a full byte), and a compressed payload is finished. The
@@ -541,6 +564,10 @@ public class PackOutputStream implements Closeable
   public void close() throws IOException
   {
     forceByteAlignment();
+
+    // finish first, so the sync flush doesn't add an empty block before the GZIP trailer
+    if (stream instanceof DeflaterOutputStream deflaterStream)
+      deflaterStream.finish();
 
     stream.flush();
     stream.close();
