@@ -1,3 +1,5 @@
+<img src="docs/icon.svg" alt="Pack logo" width="96" align="right">
+
 # Pack – Compact Bit-Level Binary Streams for Java
 
 [![License](https://img.shields.io/github/license/jgremmen/pack)](https://www.apache.org/licenses/LICENSE-2.0)
@@ -238,4 +240,3 @@ cd pack
 This project is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 Copyright 2025 Jeroen Gremmen
-
