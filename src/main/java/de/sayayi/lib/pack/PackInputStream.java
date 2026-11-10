@@ -735,7 +735,9 @@ public class PackInputStream implements Closeable
 
 
   /**
-   * Closes this pack input stream and the underlying input stream.
+   * {@inheritDoc}
+   * <p>
+   * The underlying input stream is closed as well.
    *
    * @throws IOException  if an I/O error occurs
    */

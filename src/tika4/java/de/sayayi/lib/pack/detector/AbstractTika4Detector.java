@@ -116,9 +116,10 @@ public abstract class AbstractTika4Detector implements Detector
 
 
   /**
-   * Detects whether the given input stream contains a valid pack file.
+   * {@inheritDoc}
    * <p>
-   * If the input can be successfully read as a pack stream, an annotated {@link MediaType} is returned (see
+   * This detector checks whether the given input stream contains a valid pack file. If the input can be successfully
+   * read as a pack stream, an annotated {@link MediaType} is returned (see
    * {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise, {@link MediaType#OCTET_STREAM OCTET_STREAM} is
    * returned as a fallback. Only {@link IOException}s while reading the header are treated this way; runtime exceptions
    * indicate a programming error and are propagated. The input stream is marked and reset so that it can be read again

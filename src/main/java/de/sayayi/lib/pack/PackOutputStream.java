@@ -534,7 +534,7 @@ public class PackOutputStream implements Closeable, Flushable
 
 
   /**
-   * Flushes this pack output stream and the underlying output stream.
+   * {@inheritDoc}
    * <p>
    * All complete bytes written so far are passed to the underlying output stream. If the payload is compressed, the
    * compressor is flushed with {@link java.util.zip.Deflater#SYNC_FLUSH SYNC_FLUSH}, so that the receiver can
@@ -555,10 +555,10 @@ public class PackOutputStream implements Closeable, Flushable
 
 
   /**
-   * Closes this pack output stream and the underlying output stream.
+   * {@inheritDoc}
    * <p>
-   * Any buffered bits are written first (padded with zeros to a full byte), and a compressed payload is finished. The
-   * underlying output stream is flushed before it is closed.
+   * The underlying output stream is closed as well. Any buffered bits are written first (padded with zeros to a full
+   * byte), and a compressed payload is finished. The underlying output stream is flushed before it is closed.
    *
    * @throws IOException  if an I/O error occurs
    */

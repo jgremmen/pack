@@ -39,7 +39,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * Tests {@link AbstractFileTypeDetector}.
  * <p>
  * Covers detection of pack files with and without compression support, the annotated MIME type returned, rejection of
- * pack configurations without magic bytes, and probing of non pack files without leaking file handles.
+ * pack configurations without magic bytes, files with a corrupt compressed payload, propagation of runtime exceptions,
+ * and probing of non pack files without leaking file handles.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0

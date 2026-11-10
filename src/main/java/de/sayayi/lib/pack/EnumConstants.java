@@ -33,6 +33,7 @@ final class EnumConstants
 {
   /** Constants of each enum class, computed on first access. */
   private static final ClassValue<Enum<?>[]> CONSTANTS = new ClassValue<>() {
+    /** {@inheritDoc} */
     @Override
     protected Enum<?>[] computeValue(@NotNull Class<?> type) {
       return (Enum<?>[])type.getEnumConstants();
@@ -40,6 +41,7 @@ final class EnumConstants
   };
 
 
+  /** Prevents instantiation, as this class only provides static methods. */
   private EnumConstants() {
   }
 

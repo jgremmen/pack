@@ -114,13 +114,14 @@ public abstract class AbstractFileTypeDetector extends FileTypeDetector
 
 
   /**
-   * Probes the given file to determine whether it is a pack file matching the configured format.
+   * {@inheritDoc}
    * <p>
-   * The file is recognized if its header can be successfully read as a pack stream using the configured
-   * {@link PackConfig}. In that case, an annotated MIME type string is returned (see
-   * {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise, including when the file cannot be read,
-   * {@code null} is returned to indicate that this detector does not recognize the file. Only {@link IOException}s are
-   * treated this way; runtime exceptions indicate a programming error and are propagated.
+   * This detector checks whether the given file is a pack file matching the configured format. The file is recognized
+   * if its header can be successfully read as a pack stream using the configured {@link PackConfig}. In that case, an
+   * annotated MIME type string is returned (see {@link #buildAnnotatedMimeType(OptionalInt, Boolean)}). Otherwise,
+   * including when the file cannot be read, {@code null} is returned to indicate that this detector does not recognize
+   * the file. Only {@link IOException}s are treated this way; runtime exceptions indicate a programming error and are
+   * propagated.
    *
    * @param path  the path to the file to probe
    *

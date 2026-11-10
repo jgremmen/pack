@@ -38,8 +38,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests writing data with {@link PackOutputStream} and reading it back with {@link PackInputStream}.
  * <p>
  * Covers round trips of all supported value types (booleans, small and large values with fixed or variable bit width,
- * ints, longs, enums including the deprecated enum methods, and strings), values at range boundaries, validation of out
- * of range arguments and bit widths, and the handling of malformed enum and string data.
+ * ints, longs, enums including constants with class bodies and the deprecated enum methods, and strings), values at
+ * range boundaries, validation of out of range arguments and bit widths (without writing to the stream), flushing
+ * without closing the stream, validation of the header magic, and the handling of malformed enum and string data.
  *
  * @author Jeroen Gremmen
  * @since 0.1.0
